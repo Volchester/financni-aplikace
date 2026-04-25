@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#2d6be4">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Finanční evidence</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f4f6f9;
+    --surface: #ffffff;
+    --border: #dde2ea;
+    --text: #1e2a3a;
+    --text-muted: #6b7a90;
+    --accent: #2d6be4;
+    --accent-light: #e8efff;
+    --green: #2eab6f;
+    --green-light: #e6f7f0;
+    --row-hover: #f0f4ff;
+    --row-active: #e8efff;
+    --shadow: 0 1px 4px rgba(0,0,0,0.08);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-top: env(safe-area-inset-top, 0px);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.5;
+    min-height: 100vh;
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 16px 12px calc(80px + var(--safe-bottom));
+    padding-top: calc(16px + var(--safe-top));
+  }
+
+  /* ── Navigation tabs ── */
+  .nav-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow);
+  }
+  .nav-tab {
+    flex: 1;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 7px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  .nav-tab.active[data-view="prijmy"]    { background: #2d6be4; color: #fff; font-weight: 600; }
+  .nav-tab.active[data-view="podnikani"] { background: #2eab6f; color: #fff; font-weight: 600; }
+  .nav-tab:not(.active):hover { background: var(--bg); }
+
+  /* ── Header ── */
+  .app-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .app-title { font-size: 20px; font-weight: 700; color: var(--text); margin-right: auto; }
+
+  .year-select {
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    min-height: 44px;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7a90' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 30px;
+    transition: border-color 0.15s;
+  }
+  #view-prijmy    .year-select:focus { border-color: #2d6be4; }
+  #view-podnikani .year-select:focus { border-color: #2eab6f; }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 10px 16px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); font-size: 14px; font-weight: 500;
+    cursor: pointer; min-height: 44px; transition: background 0.15s, border-color 0.15s;
+    white-space: nowrap; -webkit-tap-highlight-color: transparent; user-select: none;
+  }
+  .btn:active { opacity: 0.75; }
+  #view-prijmy    .btn-primary { background: #2d6be4; color: #fff; border-color: #2d6be4; }
+  #view-podnikani .btn-primary { background: #2eab6f; color: #fff; border-color: #2eab6f; }
+  .btn-danger { color: #c0392b; border-color: #e8b4b0; }
+  .btn:disabled { opacity: 0.35; pointer-events: none; }
+
+  /* ── Card ── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 16px; overflow: hidden;
+  }
+
+  /* ── Desktop table ── */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { width: 100%; border-collapse: collapse; }
+  #view-prijmy    table { min-width: 560px; }
+  #view-podnikani table { min-width: 380px; }
+
+  th {
+    background: var(--bg); color: var(--text-muted); font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.04em; padding: 10px 12px;
+    text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap;
+  }
+  th:first-child { text-align: left; }
+  th.th-faktury { text-align: left; width: 99%; }
+
+  td {
+    padding: 4px 6px; border-bottom: 1px solid var(--border);
+    text-align: right; vertical-align: middle;
+  }
+  td:first-child { text-align: left; padding-left: 14px; font-weight: 500; white-space: nowrap; }
+  td.td-faktury { text-align: left; width: 99%; }
+  tr:last-child td { border-bottom: none; }
+
+  #view-prijmy    tr.data-row:hover { background: #f0f4ff; }
+  #view-podnikani tr.data-row:hover { background: #f0fbf6; }
+  #view-prijmy    tr.data-row.active { background: #e8efff; }
+  #view-podnikani tr.data-row.active { background: #e6f7f0; }
+
+  .td-computed { padding: 4px 12px; color: var(--text-muted); font-size: 13px; }
+  .td-total { font-weight: 700; color: var(--green); padding: 4px 12px; font-size: 13px; }
+
+  tfoot td {
+    background: var(--bg); font-weight: 600; padding: 10px 12px;
+    font-size: 13px; border-top: 2px solid var(--border);
+  }
+  tfoot td:first-child { color: var(--text-muted); font-size: 11px; text-transform: uppercase; }
+  #view-prijmy    tfoot .foot-total { color: #2d6be4; font-size: 15px; font-weight: 700; }
+  #view-podnikani tfoot .foot-total { color: #2eab6f; font-size: 15px; font-weight: 700; }
+  tfoot .foot-avg { color: var(--text-muted); font-size: 13px; }
+
+  /* ── Inputs ── */
+  input[type=number] {
+    width: 100px; padding: 7px 10px; border: 1px solid transparent;
+    border-radius: 6px; background: transparent; color: var(--text);
+    font-size: 14px; text-align: right; outline: none;
+    transition: border-color 0.15s, background 0.15s; -moz-appearance: textfield;
+  }
+  #view-podnikani input[type=number] { width: 110px; }
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+  input[type=number]:hover { border-color: var(--border); background: var(--bg); }
+  #view-prijmy    input[type=number]:focus { border-color: #2d6be4; background: #fff; box-shadow: 0 0 0 3px #e8efff; }
+  #view-podnikani input[type=number]:focus { border-color: #2eab6f; background: #fff; box-shadow: 0 0 0 3px #e6f7f0; }
+
+  input[type=text] {
+    width: 100%; padding: 7px 10px; border: 1px solid transparent;
+    border-radius: 6px; background: transparent; color: var(--text);
+    font-size: 14px; text-align: left; outline: none;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  input[type=text]:hover { border-color: var(--border); background: var(--bg); }
+  input[type=text]:focus { border-color: #2eab6f; background: #fff; box-shadow: 0 0 0 3px #e6f7f0; }
+
+  /* ── Mobile cards ── */
+  .mobile-cards { display: none; }
+  .month-card { border-bottom: 1px solid var(--border); }
+  .month-card:last-child { border-bottom: none; }
+
+  .month-card-header {
+    display: flex; align-items: center; padding: 14px 16px; cursor: pointer;
+    gap: 10px; -webkit-tap-highlight-color: transparent; user-select: none; min-height: 52px;
+  }
+  #view-prijmy    .month-card.open .month-card-header { background: #e8efff; }
+  #view-podnikani .month-card.open .month-card-header { background: #e6f7f0; }
+
+  .mc-name { font-weight: 600; font-size: 15px; flex: 1; }
+  .mc-summary { font-size: 14px; font-weight: 700; text-align: right; min-width: 90px; }
+  #view-prijmy    .mc-summary { color: var(--green); }
+  #view-podnikani .mc-summary { color: #2eab6f; }
+  .mc-summary.zero { color: var(--text-muted); font-weight: 400; }
+  .mc-chevron { color: var(--text-muted); font-size: 12px; transition: transform 0.2s; flex-shrink: 0; margin-left: 4px; }
+  .month-card.open .mc-chevron { transform: rotate(180deg); }
+
+  .month-card-body { display: none; padding: 4px 16px 14px; background: var(--bg); gap: 10px; }
+  .month-card.open .month-card-body { display: flex; flex-direction: column; }
+
+  .mc-field { display: flex; align-items: center; gap: 10px; }
+  .mc-field label { font-size: 13px; color: var(--text-muted); flex-shrink: 0; }
+  #view-prijmy    .mc-field label { width: 90px; }
+  #view-podnikani .mc-field label { width: 70px; }
+  .mc-field input[type=number], .mc-field input[type=text] {
+    flex: 1; width: auto; min-height: 44px; font-size: 16px; padding: 10px 14px;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
+  }
+  .mc-field input[type=text] { font-size: 15px; text-align: left; }
+  #view-prijmy    .mc-field input:focus { border-color: #2d6be4; box-shadow: 0 0 0 3px #e8efff; background: #fff; }
+  #view-podnikani .mc-field input:focus { border-color: #2eab6f; box-shadow: 0 0 0 3px #e6f7f0; background: #fff; }
+
+  .mc-divider { height: 1px; background: var(--border); margin: 2px 0; }
+  .mc-computed-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 13px; }
+  .mc-computed-row .mc-clabel { color: var(--text-muted); }
+  .mc-computed-row .mc-cvalue { font-weight: 600; color: var(--text-muted); }
+  .mc-computed-row.total .mc-clabel { color: var(--text); font-weight: 600; }
+  .mc-computed-row.total .mc-cvalue { color: var(--green); font-weight: 700; font-size: 15px; }
+
+  /* ── Mobile footer ── */
+  .mobile-footer-card {
+    display: none; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 16px;
+    padding: 14px 16px; gap: 6px; flex-direction: column;
+  }
+  .mfc-row { display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+  .mfc-row .mfc-label { color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  #view-prijmy    .mfc-row .mfc-value-total { color: #2d6be4; font-weight: 700; font-size: 18px; }
+  #view-podnikani .mfc-row .mfc-value-total { color: #2eab6f; font-weight: 700; font-size: 18px; }
+  .mfc-row .mfc-value-avg { color: var(--text-muted); font-weight: 500; }
+
+  /* ── Charts ── */
+  .chart-section { padding: 16px; }
+  .chart-label { font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+  svg.chart { display: block; width: 100%; overflow: visible; }
+  .chart-legend { display: flex; gap: 16px; margin-bottom: 10px; font-size: 12px; color: var(--text-muted); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 5px; vertical-align: middle; }
+
+  /* ── Year comparison ── */
+  .comparison-section { padding: 16px; }
+  .comparison-row {
+    display: flex; align-items: center; gap: 10px; padding: 8px 0;
+    border-bottom: 1px solid var(--border); font-size: 13px;
+  }
+  .comparison-row:last-of-type { border-bottom: none; }
+  #view-prijmy    .comparison-row.current-year { background: #e8efff; border-radius: 8px; padding: 8px 10px; margin: 0 -10px; }
+  #view-podnikani .comparison-row.current-year { background: #e6f7f0; border-radius: 8px; padding: 8px 10px; margin: 0 -10px; }
+  .comp-year { font-weight: 700; width: 44px; color: var(--text); }
+  #view-prijmy    .comp-total { width: 110px; font-weight: 600; color: #2d6be4; }
+  #view-podnikani .comp-total { width: 110px; font-weight: 600; color: #2eab6f; }
+  .comp-avg { color: var(--text-muted); flex: 1; }
+  #view-prijmy    .comp-tag { font-size: 10px; background: #2d6be4; color: #fff; padding: 1px 6px; border-radius: 10px; white-space: nowrap; }
+  #view-podnikani .comp-tag { font-size: 10px; background: #2eab6f; color: #fff; padding: 1px 6px; border-radius: 10px; white-space: nowrap; }
+
+  .celkem-vydelano {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 0 0; margin-top: 8px; border-top: 2px solid var(--border);
+  }
+  .cv-label { color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.04em; }
+  .cv-value { color: #2eab6f; font-weight: 700; font-size: 18px; }
+
+  /* ── Status bar ── */
+  .statusbar {
+    position: fixed; bottom: calc(18px + var(--safe-bottom)); left: 50%;
+    transform: translateX(-50%); background: var(--text); color: #fff;
+    padding: 7px 18px; border-radius: 20px; font-size: 13px;
+    opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 100; white-space: nowrap;
+  }
+  .statusbar.visible { opacity: 1; }
+
+  /* ── Dialog ── */
+  .dialog-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+    z-index: 200; align-items: flex-end; justify-content: center; padding-bottom: var(--safe-bottom);
+  }
+  .dialog-overlay.open { display: flex; }
+  .dialog {
+    background: var(--surface); border-radius: 16px 16px 0 0;
+    padding: 24px 20px calc(20px + var(--safe-bottom)); width: 100%; max-width: 480px;
+    box-shadow: 0 -4px 32px rgba(0,0,0,0.15); animation: slideUp 0.2s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .dialog h3 { font-size: 17px; margin-bottom: 8px; }
+  .dialog p { color: var(--text-muted); font-size: 14px; margin-bottom: 24px; line-height: 1.6; }
+  .dialog-buttons { display: flex; gap: 10px; }
+  .dialog-buttons .btn { flex: 1; justify-content: center; min-height: 48px; font-size: 15px; }
+
+  /* ── Responsive ── */
+  @media (min-width: 601px) {
+    .dialog-overlay { align-items: center; padding-bottom: 0; }
+    .dialog { border-radius: 16px; max-width: 380px; padding: 24px; animation: none; }
+    .statusbar { left: 24px; transform: none; }
+  }
+
+  @media (max-width: 600px) {
+    .container { padding: 12px 8px calc(72px + var(--safe-bottom)); padding-top: calc(12px + var(--safe-top)); }
+    .app-title { font-size: 18px; }
+    .app-header { gap: 8px; }
+    .desktop-table-card { display: none; }
+    .mobile-cards { display: block; }
+    .mobile-footer-card { display: flex; }
+    .chart-section { padding: 12px; }
+    svg.chart { height: 160px !important; }
+  }
+
+  @media (min-width: 601px) {
+    .desktop-table-card { display: block; }
+    .mobile-cards { display: none; }
+    .mobile-footer-card { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="nav-tabs">
+    <button class="nav-tab active" data-view="prijmy">Příjmy</button>
+    <button class="nav-tab" data-view="podnikani">Podnikání</button>
+  </div>
+
+  <!-- ═══════════════ PŘÍJMY VIEW ═══════════════ -->
+  <div id="view-prijmy">
+
+    <div class="app-header">
+      <h1 class="app-title">Evidence příjmů</h1>
+      <select class="year-select" id="p-yearSelect"></select>
+      <button class="btn btn-primary" id="p-btnNewYear">+ Nový rok</button>
+      <button class="btn btn-danger" id="p-btnDeleteYear">Smazat</button>
+    </div>
+
+    <div class="card desktop-table-card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Měsíc</th><th>Práce (Kč)</th><th>Stravné (Kč)</th>
+              <th>Celkem Práce</th><th>Podnikání (Kč)</th><th>Celkem</th>
+            </tr>
+          </thead>
+          <tbody id="p-tableBody"></tbody>
+          <tfoot>
+            <tr><td>Dohromady</td><td></td><td></td><td></td><td></td><td class="foot-total" id="p-footTotal">0 Kč</td></tr>
+            <tr><td>Průměr / měsíc</td><td></td><td></td><td></td><td></td><td class="foot-avg" id="p-footAvg">0 Kč</td></tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <div class="card mobile-cards" id="p-mobileCards"></div>
+
+    <div class="mobile-footer-card" id="p-mobileFooter">
+      <div class="mfc-row">
+        <span class="mfc-label">Dohromady</span>
+        <span class="mfc-value-total" id="p-mFootTotal">0 Kč</span>
+      </div>
+      <div class="mfc-row">
+        <span class="mfc-label">Průměr / měsíc</span>
+        <span class="mfc-value-avg" id="p-mFootAvg">0 Kč</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chart-section">
+        <div class="chart-label">Měsíční celkové příjmy</div>
+        <svg class="chart" id="p-chart1" height="200"></svg>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chart-section">
+        <div class="chart-label">Práce vs. Podnikání</div>
+        <div class="chart-legend">
+          <span><span class="legend-dot" style="background:#2d6be4"></span>Celkem Práce</span>
+          <span><span class="legend-dot" style="background:#2eab6f"></span>Podnikání</span>
+        </div>
+        <svg class="chart" id="p-chart2" height="200"></svg>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="comparison-section">
+        <div class="chart-label" style="margin-bottom:14px">Meziroční srovnání</div>
+        <div id="p-compRows"></div>
+        <svg class="chart" id="p-chart3" height="60" style="margin-top:14px"></svg>
+      </div>
+    </div>
+
+  </div><!-- /view-prijmy -->
+
+  <!-- ═══════════════ PODNIKÁNÍ VIEW ═══════════════ -->
+  <div id="view-podnikani" style="display:none">
+
+    <div class="app-header">
+      <h1 class="app-title">Příjmy z podnikání</h1>
+      <select class="year-select" id="b-yearSelect"></select>
+      <button class="btn btn-primary" id="b-btnNewYear">+ Nový rok</button>
+      <button class="btn btn-danger" id="b-btnDeleteYear">Smazat</button>
+    </div>
+
+    <div class="card desktop-table-card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Měsíc</th>
+              <th class="th-faktury">Faktury</th>
+              <th>Zisk (Kč)</th>
+            </tr>
+          </thead>
+          <tbody id="b-tableBody"></tbody>
+          <tfoot>
+            <tr><td>Dohromady</td><td></td><td class="foot-total" id="b-footTotal">0 Kč</td></tr>
+            <tr><td>Průměr / měsíc</td><td></td><td class="foot-avg" id="b-footAvg">0 Kč</td></tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <div class="card mobile-cards" id="b-mobileCards"></div>
+
+    <div class="mobile-footer-card" id="b-mobileFooter">
+      <div class="mfc-row">
+        <span class="mfc-label">Dohromady</span>
+        <span class="mfc-value-total" id="b-mFootTotal">0 Kč</span>
+      </div>
+      <div class="mfc-row">
+        <span class="mfc-label">Průměr / měsíc</span>
+        <span class="mfc-value-avg" id="b-mFootAvg">0 Kč</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chart-section">
+        <div class="chart-label">Měsíční příjmy z podnikání</div>
+        <svg class="chart" id="b-chart1" height="200"></svg>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="comparison-section">
+        <div class="chart-label" style="margin-bottom:14px">Meziroční srovnání</div>
+        <div id="b-compRows"></div>
+        <svg class="chart" id="b-chart2" height="60" style="margin-top:14px"></svg>
+        <div class="celkem-vydelano">
+          <span class="cv-label">Celkem vyděláno</span>
+          <span class="cv-value" id="b-celkemVydelano">0 Kč</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /view-podnikani -->
+
+</div><!-- /container -->
+
+<!-- Shared dialog -->
+<div class="dialog-overlay" id="dialogOverlay">
+  <div class="dialog">
+    <h3 id="dialogTitle">Potvrzení</h3>
+    <p id="dialogMsg"></p>
+    <div class="dialog-buttons">
+      <button class="btn" id="dialogCancel">Zrušit</button>
+      <button class="btn btn-danger" id="dialogConfirm">Smazat</button>
+    </div>
+  </div>
+</div>
+
+<div class="statusbar" id="statusbar">Uloženo</div>
+
+<script>
+/* ── Shared constants ── */
+const MESICE_KEYS   = ['leden','unor','brezen','duben','kveten','cerven','cervenec','srpen','zari','rijen','listopad','prosinec'];
+const MESICE_LABELS = ['Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+const MESICE_SHORT  = ['Led','Úno','Bře','Dub','Kvě','Čer','Čvc','Srp','Zář','Říj','Lis','Pro'];
+
+const fmt    = n => new Intl.NumberFormat('cs-CZ').format(Math.round(n)) + ' Kč';
+const fmtNum = n => new Intl.NumberFormat('cs-CZ').format(Math.round(n));
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+function svgEl(tag, attrs) {
+  const el = document.createElementNS(SVG_NS, tag);
+  Object.entries(attrs).forEach(([k,v]) => el.setAttribute(k, v));
+  return el;
+}
+function getChartWidth(el) { const w = el.parentElement.clientWidth; return w > 0 ? w - 32 : 320; }
+function isMobile() { return window.innerWidth <= 600; }
+function niceStep(maxVal, ticks) {
+  if (maxVal === 0) return 1;
+  const raw = maxVal / ticks;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const norm = raw / mag;
+  return (norm < 1.5 ? 1 : norm < 3 ? 2 : norm < 7 ? 5 : 10) * mag;
+}
+
+/* ── Shared status bar ── */
+let statusTimer = null;
+function showStatus() {
+  const s = document.getElementById('statusbar');
+  s.classList.add('visible');
+  clearTimeout(statusTimer);
+  statusTimer = setTimeout(() => s.classList.remove('visible'), 1800);
+}
+
+/* ── Shared dialog ── */
+let dialogCallback = null;
+function showDialog(title, msg, cb) {
+  document.getElementById('dialogTitle').textContent = title;
+  document.getElementById('dialogMsg').textContent = msg;
+  dialogCallback = cb;
+  document.getElementById('dialogOverlay').classList.add('open');
+}
+document.getElementById('dialogConfirm').addEventListener('click', () => {
+  document.getElementById('dialogOverlay').classList.remove('open');
+  if (dialogCallback) dialogCallback();
+  dialogCallback = null;
+});
+document.getElementById('dialogCancel').addEventListener('click', () => {
+  document.getElementById('dialogOverlay').classList.remove('open');
+  dialogCallback = null;
+});
+document.getElementById('dialogOverlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) {
+    document.getElementById('dialogOverlay').classList.remove('open');
+    dialogCallback = null;
+  }
+});
+
+/* ── Tab switching ── */
+let activeView = 'prijmy';
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const view = tab.dataset.view;
+    if (view === activeView) return;
+    activeView = view;
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
+    document.getElementById('view-prijmy').style.display    = view === 'prijmy'    ? '' : 'none';
+    document.getElementById('view-podnikani').style.display = view === 'podnikani' ? '' : 'none';
+    if (view === 'prijmy')    PRIJMY.scheduleCharts();
+    if (view === 'podnikani') PODNIKANI.scheduleCharts();
+  });
+});
+
+/* ════════════════════════════════════════════
+   PŘÍJMY MODULE
+════════════════════════════════════════════ */
+const PRIJMY = (() => {
+  const STORAGE_KEY = 'prijmy_app_data';
+  let data = {}, currentYear = String(new Date().getFullYear()), saveTimer = null;
+
+  const SEED = {
+    currentYear: '2026',
+    years: {
+      '2025': {
+        leden:    { prace: 32532, stravne:  1200, podnikani: 93381 },
+        unor:     { prace: 37216, stravne:  2400, podnikani:     0 },
+        brezen:   { prace: 29992, stravne:  5995, podnikani:     0 },
+        duben:    { prace: 35884, stravne:  8038, podnikani:  3850 },
+        kveten:   { prace: 41023, stravne:  6483, podnikani: 12200 },
+        cerven:   { prace: 47661, stravne: 11869, podnikani:  8600 },
+        cervenec: { prace: 46995, stravne:  6745, podnikani: 29900 },
+        srpen:    { prace: 48857, stravne:  6333, podnikani:  9000 },
+        zari:     { prace: 51094, stravne:  6181, podnikani:  7972 },
+        rijen:    { prace: 48809, stravne:  6727, podnikani:     0 },
+        listopad: { prace: 85526, stravne:  3570, podnikani: 43023 },
+        prosinec: { prace: 46470, stravne:  5855, podnikani:     0 },
+      },
+      '2026': {
+        leden:    { prace: 49205, stravne:  4875, podnikani:  8200 },
+        unor:     { prace: 51132, stravne: 12267, podnikani:     0 },
+        brezen:   { prace: 55503, stravne:  5925, podnikani: 49472 },
+        duben:    { prace: 53409, stravne:     0, podnikani:     0 },
+        kveten:   { prace:     0, stravne:     0, podnikani:     0 },
+        cerven:   { prace:     0, stravne:     0, podnikani:     0 },
+        cervenec: { prace:     0, stravne:     0, podnikani:     0 },
+        srpen:    { prace:     0, stravne:     0, podnikani:     0 },
+        zari:     { prace:     0, stravne:     0, podnikani:     0 },
+        rijen:    { prace:     0, stravne:     0, podnikani:     0 },
+        listopad: { prace:     0, stravne:     0, podnikani:     0 },
+        prosinec: { prace:     0, stravne:     0, podnikani:     0 },
+      }
+    }
+  };
+
+  function emptyYear() {
+    const y = {};
+    MESICE_KEYS.forEach(m => { y[m] = { prace: 0, stravne: 0, podnikani: 0 }; });
+    return y;
+  }
+
+  function initData() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) { try { data = JSON.parse(raw); currentYear = String(data.currentYear || new Date().getFullYear()); return; } catch(e) {} }
+    data = JSON.parse(JSON.stringify(SEED));
+    currentYear = data.currentYear;
+    saveData();
+  }
+
+  function saveData() { data.currentYear = currentYear; localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); showStatus(); }
+  function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveData, 300); }
+
+  function getYearData(y) { if (!data.years[y]) data.years[y] = emptyYear(); return data.years[y]; }
+  function getMonthData(y, m) { const yd = getYearData(y); if (!yd[m]) yd[m] = { prace: 0, stravne: 0, podnikani: 0 }; return yd[m]; }
+
+  function renderYearSelect() {
+    const sel = document.getElementById('p-yearSelect');
+    const years = Object.keys(data.years).sort();
+    sel.innerHTML = '';
+    years.forEach(y => { const o = document.createElement('option'); o.value = y; o.textContent = y; if (y === currentYear) o.selected = true; sel.appendChild(o); });
+    document.getElementById('p-btnDeleteYear').disabled = years.length <= 1;
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('p-tableBody');
+    tbody.innerHTML = '';
+    let totalCelkem = 0, filledMonths = 0;
+    MESICE_KEYS.forEach((mk, i) => {
+      const md = getMonthData(currentYear, mk);
+      const celkemPrace = md.prace + md.stravne;
+      const celkem = celkemPrace + md.podnikani;
+      totalCelkem += celkem;
+      if (celkem > 0) filledMonths++;
+      const tr = document.createElement('tr');
+      tr.className = 'data-row';
+      tr.innerHTML = `
+        <td>${MESICE_LABELS[i]}</td>
+        <td><input type="number" inputmode="numeric" min="0" step="1" value="${md.prace||''}" data-field="prace" data-month="${mk}" placeholder="0"></td>
+        <td><input type="number" inputmode="numeric" min="0" step="1" value="${md.stravne||''}" data-field="stravne" data-month="${mk}" placeholder="0"></td>
+        <td class="td-computed" id="p-dt-cp-${mk}">${celkemPrace > 0 ? fmtNum(celkemPrace) : '—'}</td>
+        <td><input type="number" inputmode="numeric" min="0" step="1" value="${md.podnikani||''}" data-field="podnikani" data-month="${mk}" placeholder="0"></td>
+        <td class="td-total" id="p-dt-c-${mk}">${celkem > 0 ? fmt(celkem) : '—'}</td>
+      `;
+      tr.querySelectorAll('input').forEach(inp => {
+        inp.addEventListener('focus', () => { inp.select(); tr.classList.add('active'); });
+        inp.addEventListener('blur', () => tr.classList.remove('active'));
+        inp.addEventListener('input', () => onInputChange(inp.dataset.month, inp.dataset.field, inp.value));
+      });
+      tbody.appendChild(tr);
+    });
+    updateFooter(totalCelkem, filledMonths);
+  }
+
+  function renderMobileCards() {
+    const container = document.getElementById('p-mobileCards');
+    container.innerHTML = '';
+    let totalCelkem = 0, filledMonths = 0;
+    MESICE_KEYS.forEach((mk, i) => {
+      const md = getMonthData(currentYear, mk);
+      const celkemPrace = md.prace + md.stravne;
+      const celkem = celkemPrace + md.podnikani;
+      totalCelkem += celkem;
+      if (celkem > 0) filledMonths++;
+      const card = document.createElement('div');
+      card.className = 'month-card';
+      const header = document.createElement('div');
+      header.className = 'month-card-header';
+      header.innerHTML = `
+        <span class="mc-name">${MESICE_LABELS[i]}</span>
+        <span class="mc-summary ${celkem===0?'zero':''}" id="p-mc-sum-${mk}">${celkem>0?fmt(celkem):'—'}</span>
+        <span class="mc-chevron">▼</span>
+      `;
+      const body = document.createElement('div');
+      body.className = 'month-card-body';
+      body.innerHTML = `
+        <div class="mc-field"><label>Práce</label><input type="number" inputmode="numeric" min="0" step="1" value="${md.prace||''}" data-field="prace" data-month="${mk}" placeholder="0"></div>
+        <div class="mc-field"><label>Stravné</label><input type="number" inputmode="numeric" min="0" step="1" value="${md.stravne||''}" data-field="stravne" data-month="${mk}" placeholder="0"></div>
+        <div class="mc-computed-row"><span class="mc-clabel">Celkem Práce</span><span class="mc-cvalue" id="p-mc-cp-${mk}">${celkemPrace>0?fmt(celkemPrace):'—'}</span></div>
+        <div class="mc-divider"></div>
+        <div class="mc-field"><label>Podnikání</label><input type="number" inputmode="numeric" min="0" step="1" value="${md.podnikani||''}" data-field="podnikani" data-month="${mk}" placeholder="0"></div>
+        <div class="mc-computed-row total"><span class="mc-clabel">Celkem</span><span class="mc-cvalue" id="p-mc-c-${mk}">${celkem>0?fmt(celkem):'—'}</span></div>
+      `;
+      body.querySelectorAll('input').forEach(inp => {
+        inp.addEventListener('focus', () => inp.select());
+        inp.addEventListener('input', () => onInputChange(inp.dataset.month, inp.dataset.field, inp.value));
+      });
+      header.addEventListener('click', () => card.classList.toggle('open'));
+      card.appendChild(header); card.appendChild(body);
+      container.appendChild(card);
+    });
+    updateFooter(totalCelkem, filledMonths);
+  }
+
+  function onInputChange(month, field, rawValue) {
+    let val = parseInt(rawValue, 10);
+    if (isNaN(val) || val < 0) val = 0;
+    const md = getMonthData(currentYear, month);
+    md[field] = val;
+    const celkemPrace = md.prace + md.stravne;
+    const celkem = celkemPrace + md.podnikani;
+    const cpCell = document.getElementById(`p-dt-cp-${month}`);
+    const cCell  = document.getElementById(`p-dt-c-${month}`);
+    if (cpCell) cpCell.textContent = celkemPrace > 0 ? fmtNum(celkemPrace) : '—';
+    if (cCell)  cCell.textContent  = celkem > 0 ? fmt(celkem) : '—';
+    const mcSum = document.getElementById(`p-mc-sum-${month}`);
+    const mcCp  = document.getElementById(`p-mc-cp-${month}`);
+    const mcC   = document.getElementById(`p-mc-c-${month}`);
+    if (mcSum) { mcSum.textContent = celkem > 0 ? fmt(celkem) : '—'; mcSum.className = `mc-summary ${celkem===0?'zero':''}`; }
+    if (mcCp)  mcCp.textContent = celkemPrace > 0 ? fmt(celkemPrace) : '—';
+    if (mcC)   mcC.textContent  = celkem > 0 ? fmt(celkem) : '—';
+    recalcFooter();
+    scheduleSave();
+    scheduleCharts();
+  }
+
+  function recalcFooter() {
+    const yd = getYearData(currentYear);
+    let total = 0, filled = 0;
+    MESICE_KEYS.forEach(mk => { const md = yd[mk]||{}; const s = (md.prace||0)+(md.stravne||0)+(md.podnikani||0); total += s; if (s>0) filled++; });
+    updateFooter(total, filled);
+  }
+
+  function updateFooter(total, filledMonths) {
+    const avg = filledMonths > 0 ? total / filledMonths : 0;
+    document.getElementById('p-footTotal').textContent  = fmt(total);
+    document.getElementById('p-footAvg').textContent    = fmt(avg);
+    document.getElementById('p-mFootTotal').textContent = fmt(total);
+    document.getElementById('p-mFootAvg').textContent   = fmt(avg);
+  }
+
+  function getYearTotal(y) {
+    const yd = getYearData(y);
+    let t = 0;
+    MESICE_KEYS.forEach(mk => { const md = yd[mk]||{}; t += (md.prace||0)+(md.stravne||0)+(md.podnikani||0); });
+    return t;
+  }
+
+  function getYearFilledMonths(y) {
+    const yd = getYearData(y);
+    let filled = 0;
+    MESICE_KEYS.forEach(mk => { const md = yd[mk]||{}; if ((md.prace||0)+(md.stravne||0)+(md.podnikani||0)>0) filled++; });
+    return filled;
+  }
+
+  function renderChart1() {
+    const svg = document.getElementById('p-chart1');
+    svg.innerHTML = '';
+    const yd = getYearData(currentYear);
+    const values = MESICE_KEYS.map(mk => { const md = yd[mk]||{}; return (md.prace||0)+(md.stravne||0)+(md.podnikani||0); });
+    drawBarChart(svg, values, Math.max(...values, 1), '#2d6be4');
+  }
+
+  function renderChart2() {
+    const svg = document.getElementById('p-chart2');
+    svg.innerHTML = '';
+    const yd = getYearData(currentYear);
+    const valA = MESICE_KEYS.map(mk => { const md = yd[mk]||{}; return (md.prace||0)+(md.stravne||0); });
+    const valB = MESICE_KEYS.map(mk => { const md = yd[mk]||{}; return md.podnikani||0; });
+    drawStackedBarChart(svg, valA, valB, Math.max(...valA.map((a,i)=>a+valB[i]),1));
+  }
+
+  function drawBarChart(svg, values, maxVal, color) {
+    const mobile = isMobile();
+    const H = mobile ? 160 : 200, PAD_TOP = mobile?18:24, PAD_BTM = mobile?24:30, PAD_L=8, PAD_R=8;
+    const W = getChartWidth(svg), plotH = H-PAD_TOP-PAD_BTM;
+    const gap = (W-PAD_L-PAD_R)/values.length, barW = Math.max(6, gap*0.6);
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    const gridStep = niceStep(maxVal, mobile?3:5);
+    for (let v=gridStep; v<=maxVal*1.05; v+=gridStep) {
+      const y = PAD_TOP+plotH-(v/maxVal)*plotH;
+      if (y<PAD_TOP) break;
+      svg.appendChild(svgEl('line',{x1:PAD_L,y1:y,x2:W-PAD_R,y2:y,stroke:'#e4e8f0','stroke-width':1}));
+      if (!mobile) svg.appendChild(svgEl('text',{x:PAD_L,y:y-3,'font-size':'9',fill:'#9aaabf','text-anchor':'start'})).textContent=fmtNum(v);
+    }
+    values.forEach((val,i) => {
+      const cx = PAD_L+i*gap+gap/2;
+      svg.appendChild(svgEl('text',{x:cx,y:PAD_TOP+plotH+(mobile?14:16),'text-anchor':'middle','font-size':mobile?'9':'10',fill:val===0?'#ccd3de':'#6b7a90'})).textContent=MESICE_SHORT[i];
+      if (val===0) return;
+      const bh=Math.max(2,(val/maxVal)*plotH), x=PAD_L+i*gap+(gap-barW)/2, y=PAD_TOP+plotH-bh;
+      svg.appendChild(svgEl('rect',{x,y,width:barW,height:bh,fill:color,rx:2}));
+      if (!mobile) svg.appendChild(svgEl('text',{x:x+barW/2,y:y-3,'text-anchor':'middle','font-size':'9',fill:'#4a6080','font-weight':'600'})).textContent=fmtNum(val);
+    });
+  }
+
+  function drawStackedBarChart(svg, valA, valB, maxVal) {
+    const mobile = isMobile();
+    const H=mobile?160:200, PAD_TOP=mobile?14:20, PAD_BTM=mobile?24:30, PAD_L=8, PAD_R=8;
+    const W=getChartWidth(svg), plotH=H-PAD_TOP-PAD_BTM;
+    const gap=(W-PAD_L-PAD_R)/valA.length, barW=Math.max(6,gap*0.6);
+    svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+    const gridStep=niceStep(maxVal,mobile?3:5);
+    for (let v=gridStep; v<=maxVal*1.05; v+=gridStep) {
+      const y=PAD_TOP+plotH-(v/maxVal)*plotH;
+      if (y<PAD_TOP) break;
+      svg.appendChild(svgEl('line',{x1:PAD_L,y1:y,x2:W-PAD_R,y2:y,stroke:'#e4e8f0','stroke-width':1}));
+    }
+    valA.forEach((a,i) => {
+      const b=valB[i], cx=PAD_L+i*gap+gap/2;
+      svg.appendChild(svgEl('text',{x:cx,y:PAD_TOP+plotH+(mobile?14:16),'text-anchor':'middle','font-size':mobile?'9':'10',fill:(a+b)===0?'#ccd3de':'#6b7a90'})).textContent=MESICE_SHORT[i];
+      if (a+b===0) return;
+      const x=PAD_L+i*gap+(gap-barW)/2, bhA=(a/maxVal)*plotH, bhB=(b/maxVal)*plotH, yA=PAD_TOP+plotH-bhA, yB=yA-bhB;
+      if (bhA>0) svg.appendChild(svgEl('rect',{x,y:yA,width:barW,height:Math.max(1,bhA),fill:'#2d6be4',rx:2}));
+      if (bhB>0) svg.appendChild(svgEl('rect',{x,y:yB,width:barW,height:Math.max(1,bhB),fill:'#2eab6f',rx:b>0?2:0}));
+    });
+  }
+
+  function renderComparison() {
+    const years = Object.keys(data.years).sort();
+    const cont = document.getElementById('p-compRows');
+    cont.innerHTML = '';
+    const totals = years.map(y => getYearTotal(y));
+    const maxT = Math.max(...totals, 1);
+    years.forEach((y,i) => {
+      const total = totals[i], filled = getYearFilledMonths(y), avg = filled>0?total/filled:0;
+      const div = document.createElement('div');
+      div.className = 'comparison-row'+(y===currentYear?' current-year':'');
+      div.innerHTML = `<span class="comp-year">${y}</span><span class="comp-total">${fmt(total)}</span><span class="comp-avg">průměr ${fmt(avg)}/měs</span>${y===currentYear?'<span class="comp-tag">aktuální</span>':''}`;
+      cont.appendChild(div);
+    });
+    const svg = document.getElementById('p-chart3');
+    svg.innerHTML = '';
+    const W=getChartWidth(svg), barH=14, gap=22, totalH=years.length*gap+10;
+    svg.setAttribute('viewBox',`0 0 ${W} ${totalH}`);
+    svg.setAttribute('height',totalH);
+    years.forEach((y,i) => {
+      const bw=(totals[i]/maxT)*(W-100), by=i*gap+4;
+      svg.appendChild(svgEl('rect',{x:0,y:by,width:Math.max(2,bw),height:barH,fill:y===currentYear?'#2d6be4':'#b0c2e0',rx:3}));
+      svg.appendChild(svgEl('text',{x:Math.max(2,bw)+6,y:by+barH-2,'font-size':'11',fill:'#4a6080','font-weight':'600'})).textContent=`${y}: ${fmt(totals[i])}`;
+    });
+  }
+
+  let chartTimer = null;
+  function scheduleCharts() { clearTimeout(chartTimer); chartTimer = setTimeout(()=>{ renderChart1(); renderChart2(); renderComparison(); },80); }
+
+  function setupEvents() {
+    document.getElementById('p-yearSelect').addEventListener('change', e => {
+      currentYear = e.target.value; data.currentYear = currentYear; saveData();
+      renderTable(); renderMobileCards(); renderYearSelect(); scheduleCharts();
+    });
+    document.getElementById('p-btnNewYear').addEventListener('click', () => {
+      const years = Object.keys(data.years).map(Number).sort((a,b)=>a-b);
+      const suggested = years[years.length-1]+1;
+      const input = window.prompt(`Přidat nový rok (navrhovaný: ${suggested}):`, suggested);
+      if (input===null) return;
+      const y = parseInt(input,10);
+      if (isNaN(y)||y<1900||y>2100) { alert('Neplatný rok.'); return; }
+      const ys = String(y);
+      if (data.years[ys]) { alert(`Rok ${ys} již existuje.`); return; }
+      data.years[ys] = emptyYear(); currentYear = ys; data.currentYear = currentYear; saveData();
+      renderYearSelect(); renderTable(); renderMobileCards(); scheduleCharts();
+    });
+    document.getElementById('p-btnDeleteYear').addEventListener('click', () => {
+      if (Object.keys(data.years).length<=1) return;
+      showDialog(`Smazat rok ${currentYear}?`, `Opravdu chcete smazat rok ${currentYear}? Tato akce je nevratná.`, () => {
+        delete data.years[currentYear];
+        const remaining = Object.keys(data.years).sort();
+        currentYear = remaining[remaining.length-1]; data.currentYear = currentYear; saveData();
+        renderYearSelect(); renderTable(); renderMobileCards(); scheduleCharts();
+      });
+    });
+  }
+
+  function init() {
+    initData(); renderYearSelect(); renderTable(); renderMobileCards(); setupEvents(); scheduleCharts();
+  }
+
+  return { init, scheduleCharts };
+})();
+
+/* ════════════════════════════════════════════
+   PODNIKÁNÍ MODULE
+════════════════════════════════════════════ */
+const PODNIKANI = (() => {
+  const STORAGE_KEY = 'podnikani_app_data';
+  let data = {}, currentYear = String(new Date().getFullYear()), saveTimer = null;
+
+  const SEED = {
+    currentYear: '2026',
+    years: {
+      '2024': {
+        leden:{faktury:'',zisk:0}, unor:{faktury:'',zisk:0}, brezen:{faktury:'',zisk:0},
+        duben:{faktury:'',zisk:0}, kveten:{faktury:'',zisk:0}, cerven:{faktury:'',zisk:0},
+        cervenec:{faktury:'Kovo Jonáš x2, Final Hlinsko',zisk:13084},
+        srpen:{faktury:'',zisk:0},
+        zari:{faktury:'3x Final Hlinsko',zisk:46415},
+        rijen:{faktury:'JM20',zisk:1746},
+        listopad:{faktury:'',zisk:0},
+        prosinec:{faktury:'Final Hlinsko, 2x Švanda, BRAND DE',zisk:58713},
+      },
+      '2025': {
+        leden:{faktury:'Německo x2, Final Hlinsko',zisk:93381},
+        unor:{faktury:'',zisk:0}, brezen:{faktury:'',zisk:0},
+        duben:{faktury:'Final Hlinsko',zisk:3850},
+        kveten:{faktury:'PR tech',zisk:12200},
+        cerven:{faktury:'PR tech',zisk:8600},
+        cervenec:{faktury:'Musil, PR tech x2, válec',zisk:29900},
+        srpen:{faktury:'PR tech',zisk:9000},
+        zari:{faktury:'Vácel, CNC díly',zisk:7972},
+        rijen:{faktury:'',zisk:0},
+        listopad:{faktury:'Fevo, KPK Kovo, fevo, Ivan (Jikov), Švanda',zisk:43023},
+        prosinec:{faktury:'',zisk:0},
+      },
+      '2026': {
+        leden:{faktury:'Švanda',zisk:8200}, unor:{faktury:'',zisk:0},
+        brezen:{faktury:'JM20, KPK, KOVO M, Natura DK',zisk:49472},
+        duben:{faktury:'',zisk:0}, kveten:{faktury:'',zisk:0}, cerven:{faktury:'',zisk:0},
+        cervenec:{faktury:'',zisk:0}, srpen:{faktury:'',zisk:0}, zari:{faktury:'',zisk:0},
+        rijen:{faktury:'',zisk:0}, listopad:{faktury:'',zisk:0}, prosinec:{faktury:'',zisk:0},
+      }
+    }
+  };
+
+  function emptyYear() { const y={}; MESICE_KEYS.forEach(m=>{y[m]={faktury:'',zisk:0};}); return y; }
+
+  function initData() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) { try { data=JSON.parse(raw); currentYear=String(data.currentYear||new Date().getFullYear()); return; } catch(e){} }
+    data = JSON.parse(JSON.stringify(SEED)); currentYear = data.currentYear; saveData();
+  }
+
+  function saveData() { data.currentYear=currentYear; localStorage.setItem(STORAGE_KEY,JSON.stringify(data)); showStatus(); }
+  function scheduleSave() { clearTimeout(saveTimer); saveTimer=setTimeout(saveData,300); }
+
+  function getYearData(y) { if (!data.years[y]) data.years[y]=emptyYear(); return data.years[y]; }
+  function getMonthData(y,m) { const yd=getYearData(y); if (!yd[m]) yd[m]={faktury:'',zisk:0}; return yd[m]; }
+
+  function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  function renderYearSelect() {
+    const sel = document.getElementById('b-yearSelect');
+    const years = Object.keys(data.years).sort();
+    sel.innerHTML = '';
+    years.forEach(y => { const o=document.createElement('option'); o.value=y; o.textContent=y; if(y===currentYear) o.selected=true; sel.appendChild(o); });
+    document.getElementById('b-btnDeleteYear').disabled = years.length<=1;
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('b-tableBody');
+    tbody.innerHTML = '';
+    let totalZisk=0, filledMonths=0;
+    MESICE_KEYS.forEach((mk,i) => {
+      const md = getMonthData(currentYear,mk);
+      totalZisk += md.zisk;
+      if (md.zisk>0) filledMonths++;
+      const tr = document.createElement('tr');
+      tr.className = 'data-row';
+      tr.innerHTML = `
+        <td>${MESICE_LABELS[i]}</td>
+        <td class="td-faktury"><input type="text" value="${escHtml(md.faktury||'')}" data-field="faktury" data-month="${mk}" placeholder="Popis faktur…"></td>
+        <td><input type="number" inputmode="numeric" min="0" step="1" value="${md.zisk||''}" data-field="zisk" data-month="${mk}" placeholder="0"></td>
+      `;
+      tr.querySelectorAll('input').forEach(inp => {
+        inp.addEventListener('focus', ()=>{ if(inp.type==='number') inp.select(); tr.classList.add('active'); });
+        inp.addEventListener('blur', ()=>tr.classList.remove('active'));
+        inp.addEventListener('input', ()=>onInputChange(inp.dataset.month,inp.dataset.field,inp.value));
+      });
+      tbody.appendChild(tr);
+    });
+    updateFooter(totalZisk, filledMonths);
+  }
+
+  function renderMobileCards() {
+    const container = document.getElementById('b-mobileCards');
+    container.innerHTML = '';
+    let totalZisk=0, filledMonths=0;
+    MESICE_KEYS.forEach((mk,i) => {
+      const md = getMonthData(currentYear,mk);
+      totalZisk += md.zisk;
+      if (md.zisk>0) filledMonths++;
+      const card = document.createElement('div');
+      card.className = 'month-card';
+      const header = document.createElement('div');
+      header.className = 'month-card-header';
+      header.innerHTML = `
+        <span class="mc-name">${MESICE_LABELS[i]}</span>
+        <span class="mc-summary ${md.zisk===0?'zero':''}" id="b-mc-sum-${mk}">${md.zisk>0?fmt(md.zisk):'—'}</span>
+        <span class="mc-chevron">▼</span>
+      `;
+      const body = document.createElement('div');
+      body.className = 'month-card-body';
+      body.innerHTML = `
+        <div class="mc-field"><label>Faktury</label><input type="text" value="${escHtml(md.faktury||'')}" data-field="faktury" data-month="${mk}" placeholder="Popis faktur…"></div>
+        <div class="mc-field"><label>Zisk</label><input type="number" inputmode="numeric" min="0" step="1" value="${md.zisk||''}" data-field="zisk" data-month="${mk}" placeholder="0"></div>
+      `;
+      body.querySelectorAll('input').forEach(inp => {
+        inp.addEventListener('focus', ()=>{ if(inp.type==='number') inp.select(); });
+        inp.addEventListener('input', ()=>onInputChange(inp.dataset.month,inp.dataset.field,inp.value));
+      });
+      header.addEventListener('click', ()=>card.classList.toggle('open'));
+      card.appendChild(header); card.appendChild(body);
+      container.appendChild(card);
+    });
+    updateFooter(totalZisk, filledMonths);
+  }
+
+  function onInputChange(month, field, rawValue) {
+    const md = getMonthData(currentYear, month);
+    if (field==='zisk') {
+      let val=parseInt(rawValue,10); if(isNaN(val)||val<0) val=0;
+      md.zisk = val;
+      const mcSum = document.getElementById(`b-mc-sum-${month}`);
+      if (mcSum) { mcSum.textContent=val>0?fmt(val):'—'; mcSum.className=`mc-summary ${val===0?'zero':''}`; }
+      recalcFooter(); scheduleCharts();
+    } else {
+      md.faktury = rawValue;
+    }
+    scheduleSave();
+  }
+
+  function recalcFooter() {
+    const yd=getYearData(currentYear); let total=0,filled=0;
+    MESICE_KEYS.forEach(mk=>{ const z=(yd[mk]||{}).zisk||0; total+=z; if(z>0) filled++; });
+    updateFooter(total,filled);
+  }
+
+  function updateFooter(total, filledMonths) {
+    const avg = filledMonths>0?total/filledMonths:0;
+    document.getElementById('b-footTotal').textContent  = fmt(total);
+    document.getElementById('b-footAvg').textContent    = fmt(avg);
+    document.getElementById('b-mFootTotal').textContent = fmt(total);
+    document.getElementById('b-mFootAvg').textContent   = fmt(avg);
+  }
+
+  function getYearTotal(y) {
+    const yd=getYearData(y); let t=0;
+    MESICE_KEYS.forEach(mk=>{ t+=(yd[mk]||{}).zisk||0; });
+    return t;
+  }
+
+  function getMonthsForAverage(y) {
+    try {
+      const prijmyRaw = localStorage.getItem('prijmy_app_data');
+      if (prijmyRaw) {
+        const prijmyData = JSON.parse(prijmyRaw);
+        const yearData = prijmyData.years && prijmyData.years[y];
+        if (yearData) {
+          let count=0;
+          MESICE_KEYS.forEach(mk => { const md=yearData[mk]||{}; if((md.prace||0)+(md.stravne||0)+(md.podnikani||0)>0) count++; });
+          return Math.max(count,1);
+        }
+      }
+    } catch(e) {}
+    const yd=getYearData(y); let firstMonth=-1,lastMonth=-1;
+    MESICE_KEYS.forEach((mk,i)=>{ if((yd[mk]||{}).zisk>0){ if(firstMonth===-1) firstMonth=i; lastMonth=i; } });
+    if (firstMonth===-1) return 1;
+    return lastMonth-firstMonth+1;
+  }
+
+  function renderChart1() {
+    const svg=document.getElementById('b-chart1');
+    svg.innerHTML='';
+    const yd=getYearData(currentYear);
+    const values=MESICE_KEYS.map(mk=>(yd[mk]||{}).zisk||0);
+    const maxVal=Math.max(...values,1);
+    const mobile=isMobile(), H=mobile?160:200, PAD_TOP=mobile?18:24, PAD_BTM=mobile?24:30, PAD_L=8, PAD_R=8;
+    const W=getChartWidth(svg), plotH=H-PAD_TOP-PAD_BTM;
+    const gap=(W-PAD_L-PAD_R)/values.length, barW=Math.max(6,gap*0.6);
+    svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+    const gridStep=niceStep(maxVal,mobile?3:5);
+    for (let v=gridStep; v<=maxVal*1.05; v+=gridStep) {
+      const y=PAD_TOP+plotH-(v/maxVal)*plotH; if(y<PAD_TOP) break;
+      svg.appendChild(svgEl('line',{x1:PAD_L,y1:y,x2:W-PAD_R,y2:y,stroke:'#e4e8f0','stroke-width':1}));
+      if (!mobile) svg.appendChild(svgEl('text',{x:PAD_L,y:y-3,'font-size':'9',fill:'#9aaabf','text-anchor':'start'})).textContent=fmtNum(v);
+    }
+    values.forEach((val,i) => {
+      const cx=PAD_L+i*gap+gap/2;
+      svg.appendChild(svgEl('text',{x:cx,y:PAD_TOP+plotH+(mobile?14:16),'text-anchor':'middle','font-size':mobile?'9':'10',fill:val===0?'#ccd3de':'#6b7a90'})).textContent=MESICE_SHORT[i];
+      if (val===0) return;
+      const bh=Math.max(2,(val/maxVal)*plotH), x=PAD_L+i*gap+(gap-barW)/2, y=PAD_TOP+plotH-bh;
+      svg.appendChild(svgEl('rect',{x,y,width:barW,height:bh,fill:'#2eab6f',rx:2}));
+      if (!mobile) svg.appendChild(svgEl('text',{x:x+barW/2,y:y-3,'text-anchor':'middle','font-size':'9',fill:'#4a6080','font-weight':'600'})).textContent=fmtNum(val);
+    });
+  }
+
+  function renderComparison() {
+    const years=Object.keys(data.years).sort();
+    const cont=document.getElementById('b-compRows');
+    cont.innerHTML='';
+    const totals=years.map(y=>getYearTotal(y));
+    const maxT=Math.max(...totals,1);
+    let grandTotal=0;
+    years.forEach((y,i) => {
+      const total=totals[i]; grandTotal+=total;
+      const filled=getMonthsForAverage(y), avg=filled>0?total/filled:0;
+      const div=document.createElement('div');
+      div.className='comparison-row'+(y===currentYear?' current-year':'');
+      div.innerHTML=`<span class="comp-year">${y}</span><span class="comp-total">${fmt(total)}</span><span class="comp-avg">průměr ${fmt(avg)}/měs</span>${y===currentYear?'<span class="comp-tag">aktuální</span>':''}`;
+      cont.appendChild(div);
+    });
+    document.getElementById('b-celkemVydelano').textContent=fmt(grandTotal);
+    const svg=document.getElementById('b-chart2');
+    svg.innerHTML='';
+    const W=getChartWidth(svg), barH=14, gap=22, totalH=years.length*gap+10;
+    svg.setAttribute('viewBox',`0 0 ${W} ${totalH}`);
+    svg.setAttribute('height',totalH);
+    years.forEach((y,i) => {
+      const bw=(totals[i]/maxT)*(W-110), by=i*gap+4;
+      svg.appendChild(svgEl('rect',{x:0,y:by,width:Math.max(2,bw),height:barH,fill:y===currentYear?'#2eab6f':'#a8d5be',rx:3}));
+      svg.appendChild(svgEl('text',{x:Math.max(2,bw)+6,y:by+barH-2,'font-size':'11',fill:'#4a6080','font-weight':'600'})).textContent=`${y}: ${fmt(totals[i])}`;
+    });
+  }
+
+  let chartTimer=null;
+  function scheduleCharts() { clearTimeout(chartTimer); chartTimer=setTimeout(()=>{ renderChart1(); renderComparison(); },80); }
+
+  function setupEvents() {
+    document.getElementById('b-yearSelect').addEventListener('change', e => {
+      currentYear=e.target.value; data.currentYear=currentYear; saveData();
+      renderTable(); renderMobileCards(); renderYearSelect(); scheduleCharts();
+    });
+    document.getElementById('b-btnNewYear').addEventListener('click', () => {
+      const years=Object.keys(data.years).map(Number).sort((a,b)=>a-b);
+      const suggested=years[years.length-1]+1;
+      const input=window.prompt(`Přidat nový rok (navrhovaný: ${suggested}):`,suggested);
+      if (input===null) return;
+      const y=parseInt(input,10);
+      if (isNaN(y)||y<1900||y>2100) { alert('Neplatný rok.'); return; }
+      const ys=String(y);
+      if (data.years[ys]) { alert(`Rok ${ys} již existuje.`); return; }
+      data.years[ys]=emptyYear(); currentYear=ys; data.currentYear=currentYear; saveData();
+      renderYearSelect(); renderTable(); renderMobileCards(); scheduleCharts();
+    });
+    document.getElementById('b-btnDeleteYear').addEventListener('click', () => {
+      if (Object.keys(data.years).length<=1) return;
+      showDialog(`Smazat rok ${currentYear}?`,`Opravdu chcete smazat rok ${currentYear}? Tato akce je nevratná.`,()=>{
+        delete data.years[currentYear];
+        const remaining=Object.keys(data.years).sort();
+        currentYear=remaining[remaining.length-1]; data.currentYear=currentYear; saveData();
+        renderYearSelect(); renderTable(); renderMobileCards(); scheduleCharts();
+      });
+    });
+  }
+
+  function init() {
+    initData(); renderYearSelect(); renderTable(); renderMobileCards(); setupEvents();
+  }
+
+  return { init, scheduleCharts };
+})();
+
+/* ── Init ── */
+PRIJMY.init();
+PODNIKANI.init();
+PRIJMY.scheduleCharts();
+window.addEventListener('resize', () => {
+  if (activeView==='prijmy') PRIJMY.scheduleCharts();
+  else PODNIKANI.scheduleCharts();
+});
+</script>
+</body>
+</html>
