@@ -1660,12 +1660,11 @@ const VYDAJE = (() => {
   function renderAccordion() {
     const container = document.getElementById('v-accordion');
     container.innerHTML = '';
-    const curMonth = MESICE_KEYS[new Date().getMonth()];
 
     MESICE_KEYS.forEach((mk, i) => {
       const md = getMonthData(currentYear, mk);
       const total = getMonthTotal(md);
-      const isOpen = mk === curMonth;
+      const isOpen = false;
 
       const card = document.createElement('div');
       card.className = 'vydaje-card' + (isOpen ? ' open' : '');
