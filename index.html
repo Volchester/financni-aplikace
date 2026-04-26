@@ -512,6 +512,13 @@
   .inv-range-btn { flex-shrink: 0; padding: 5px 11px; border-radius: 6px; border: 1px solid var(--border); background: none; color: var(--text-muted); font-size: 12px; font-weight: 500; cursor: pointer; transition: background 0.15s, color 0.15s; white-space: nowrap; }
   .inv-range-btn.active { background: #7c3aed; color: #fff; border-color: #7c3aed; }
   .inv-chart-legend { display: flex; gap: 16px; justify-content: center; padding: 6px 0 12px; font-size: 12px; color: var(--text-muted); align-items: center; }
+  .inv-period-perf { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 16px 8px; font-size: 13px; gap: 8px; flex-wrap: wrap; }
+  .inv-perf-label { color: var(--text-muted); }
+  .inv-perf-values { display: flex; gap: 10px; align-items: baseline; }
+  .inv-perf-pct { font-weight: 700; font-size: 16px; }
+  .inv-perf-gain { font-size: 12px; color: var(--text-muted); }
+  .inv-perf-pct.pos, .inv-perf-gain.pos { color: var(--green); }
+  .inv-perf-pct.neg, .inv-perf-gain.neg { color: #e05252; }
   .inv-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; overflow: hidden; box-shadow: var(--shadow); }
   .inv-card-header { display: flex; align-items: center; justify-content: space-between; padding: 13px 16px; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; transition: background 0.15s; }
   .inv-card-header:hover { background: var(--bg); }
@@ -814,6 +821,13 @@
         <button class="inv-range-btn" data-range="1m" onclick="INVESTICE.setRange('1m')">1M</button>
       </div>
       <svg class="chart" id="i-chart" height="260" style="margin-top:4px"></svg>
+      <div class="inv-period-perf">
+        <span class="inv-perf-label">Výkonnost <span id="i-periodLabel">celkem</span></span>
+        <span class="inv-perf-values">
+          <span id="i-periodPct" class="inv-perf-pct">—</span>
+          <span id="i-periodGain" class="inv-perf-gain"></span>
+        </span>
+      </div>
       <div class="inv-chart-legend">
         <span><span class="legend-dot" style="background:#7c3aed"></span>Hodnota portfolia</span>
         <span><span class="legend-dot" style="background:var(--c-past-blue);border:1px dashed var(--c-past-blue)"></span>Vloženo</span>
@@ -2201,6 +2215,47 @@ const INVESTICE = (() => {
 
   let activeRange='vse';
 
+  const RANGE_LABELS = {
+    'vse':'celkem','5r':'za 5 let','4r':'za 4 roky','3r':'za 3 roky',
+    '2r':'za 2 roky','1r':'za 1 rok','ytd':'YTD','1m':'za 1 měsíc'
+  };
+
+  function getPeriodPerformance(keys) {
+    if(keys.length<2) return null;
+    let cumReturn=1, validSteps=0;
+    for(let i=1;i<keys.length;i++){
+      const prev=getMonthData(keys[i-1]), curr=getMonthData(keys[i]);
+      if(prev.value<=0) continue;
+      const contribution=curr.invested-prev.invested;
+      const monthlyReturn=(curr.value-prev.value-contribution)/prev.value;
+      cumReturn*=(1+monthlyReturn); validSteps++;
+    }
+    if(validSteps===0) return null;
+    const start=getMonthData(keys[0]), end=getMonthData(keys[keys.length-1]);
+    const contribDelta=end.invested-start.invested;
+    const absGain=(end.value-start.value)-contribDelta;
+    return {pct:(cumReturn-1)*100, absGain};
+  }
+
+  function updatePeriodPerf() {
+    const labelEl=document.getElementById('i-periodLabel');
+    const pctEl=document.getElementById('i-periodPct');
+    const gainEl=document.getElementById('i-periodGain');
+    if(!labelEl||!pctEl||!gainEl) return;
+    labelEl.textContent=RANGE_LABELS[activeRange]||activeRange;
+    const perf=getPeriodPerformance(getFilteredKeys(activeRange));
+    if(!perf){
+      pctEl.textContent='—'; pctEl.className='inv-perf-pct';
+      gainEl.textContent=''; gainEl.className='inv-perf-gain';
+      return;
+    }
+    const pctSign=perf.pct>=0?'+':'', gainSign=perf.absGain>=0?'+':'';
+    pctEl.textContent=`${pctSign}${perf.pct.toFixed(1).replace('.',',')} %`;
+    pctEl.className='inv-perf-pct '+(perf.pct>=0?'pos':'neg');
+    gainEl.textContent=`${gainSign}${fmt(perf.absGain)}`;
+    gainEl.className='inv-perf-gain '+(perf.absGain>=0?'pos':'neg');
+  }
+
   function updateHero() {
     const d=getLatestData(), gain=d.value-d.invested, pct=d.invested>0?gain/d.invested*100:0;
     const valEl=document.getElementById('i-heroValue'); if(valEl) countUp(valEl,d.value);
@@ -2212,6 +2267,7 @@ const INVESTICE = (() => {
   }
 
   function renderChart() {
+    updatePeriodPerf();
     const svg=document.getElementById('i-chart'); svg.innerHTML='';
     const keys=getFilteredKeys(activeRange);
     if(keys.length<2){
