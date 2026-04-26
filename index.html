@@ -309,16 +309,13 @@
   .goal-hero-arrow { flex-shrink: 0; color: var(--text-muted); display: flex; align-items: center; }
   .goal-hero-input-wrap { display: flex; align-items: baseline; gap: 5px; flex: 1; min-width: 120px; }
   .goal-hero-input {
-    font-size: 30px; font-weight: 700; color: var(--text); background: transparent;
-    border: none; border-bottom: 2px dashed var(--border); outline: none;
+    font-size: 30px; font-weight: 700; color: #e8a020; background: transparent;
+    border: none; border-bottom: 2px dashed #e8a020; outline: none;
     width: 100%; min-width: 0; padding: 0 2px; transition: border-color 0.15s;
-    -moz-appearance: textfield;
   }
-  .goal-hero-input::-webkit-inner-spin-button,
-  .goal-hero-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-  .goal-hero-input:focus { border-bottom-color: #2eab6f; border-bottom-style: solid; }
-  .goal-hero-input::placeholder { color: var(--text-muted); opacity: 0.4; font-size: 20px; }
-  .goal-hero-kc { font-size: 18px; font-weight: 600; color: var(--text-muted); flex-shrink: 0; }
+  .goal-hero-input:focus { border-bottom-style: solid; }
+  .goal-hero-input::placeholder { color: #e8a020; opacity: 0.4; font-size: 20px; }
+  .goal-hero-kc { font-size: 18px; font-weight: 600; color: #e8a020; flex-shrink: 0; }
 
   .goal-bar-track { height: 8px; background: var(--border); border-radius: 999px; overflow: hidden; margin-bottom: 8px; }
   .goal-bar-fill { height: 100%; background: #2eab6f; border-radius: 999px; width: 0%; transition: width 0.6s cubic-bezier(0.34,1.56,0.64,1), background 0.3s; }
@@ -553,7 +550,7 @@
               </svg>
             </span>
             <div class="goal-hero-input-wrap">
-              <input type="number" id="b-goalAmount" class="goal-hero-input" inputmode="numeric" min="0" step="1000" placeholder="Nastav cíl">
+              <input type="text" id="b-goalAmount" class="goal-hero-input" inputmode="numeric" placeholder="Nastav cíl">
               <span class="goal-hero-kc">Kč</span>
             </div>
           </div>
@@ -1185,7 +1182,8 @@ const PODNIKANI = (() => {
   /* ── Goal hero ── */
   function renderGoalCard() {
     const goal = getGoal();
-    document.getElementById('b-goalAmount').value = goal.amount || '';
+    const inp = document.getElementById('b-goalAmount');
+    inp.value = goal.amount ? new Intl.NumberFormat('cs-CZ').format(goal.amount) : '';
     document.getElementById('b-goalOdmena').value = goal.odmena || '';
     updateGoalProgress();
   }
@@ -1196,7 +1194,7 @@ const PODNIKANI = (() => {
     const hasGoal = goal.amount > 0;
     const over    = hasGoal && total >= goal.amount;
 
-    document.getElementById('b-goalHeroNow').textContent = fmt(total) + ' Kč';
+    document.getElementById('b-goalHeroNow').textContent = fmt(total);
 
     const wrap = document.getElementById('b-goalProgressWrap');
     if (hasGoal) {
@@ -1222,16 +1220,29 @@ const PODNIKANI = (() => {
 
   function setupGoalEvents() {
     let goalTimer = null;
+    const amountInp = document.getElementById('b-goalAmount');
+    const odmenaInp = document.getElementById('b-goalOdmena');
+
+    amountInp.addEventListener('focus', () => {
+      const raw = (data.goal && data.goal.amount) ? String(data.goal.amount) : '';
+      amountInp.value = raw;
+    });
+    amountInp.addEventListener('blur', () => {
+      const raw = parseInt(amountInp.value.replace(/\s/g,''), 10) || 0;
+      if (raw) amountInp.value = new Intl.NumberFormat('cs-CZ').format(raw);
+      else amountInp.value = '';
+    });
+
     function onGoalChange() {
       if (!data.goal) data.goal = {};
-      data.goal.amount = parseInt(document.getElementById('b-goalAmount').value, 10) || 0;
-      data.goal.odmena = document.getElementById('b-goalOdmena').value;
+      data.goal.amount = parseInt(amountInp.value.replace(/\s/g,''), 10) || 0;
+      data.goal.odmena = odmenaInp.value;
       updateGoalProgress();
       clearTimeout(goalTimer);
       goalTimer = setTimeout(saveData, 300);
     }
-    document.getElementById('b-goalAmount').addEventListener('input', onGoalChange);
-    document.getElementById('b-goalOdmena').addEventListener('input', onGoalChange);
+    amountInp.addEventListener('input', onGoalChange);
+    odmenaInp.addEventListener('input', onGoalChange);
   }
 
   function getMonthsForAverage(y) {
