@@ -105,6 +105,7 @@
   .nav-tab.active[data-view="prijmy"]    { background: #2d6be4; color: #fff; font-weight: 600; }
   .nav-tab.active[data-view="podnikani"] { background: #2eab6f; color: #fff; font-weight: 600; }
   .nav-tab.active[data-view="vydaje"]    { background: #e05252; color: #fff; font-weight: 600; }
+  .nav-tab.active[data-view="investice"] { background: #7c3aed; color: #fff; font-weight: 600; }
   .nav-tab:not(.active):hover { background: var(--bg); }
 
   .theme-toggle {
@@ -494,6 +495,39 @@
     .mobile-cards { display: none; }
     .mobile-footer-card { display: none; }
   }
+
+  /* ── Investice ── */
+  #view-investice .year-select:focus { border-color: #7c3aed; }
+  #view-investice .btn-primary { background: #7c3aed; }
+  .inv-hero { padding: 20px 16px 16px; }
+  .inv-hero-label { font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+  .inv-hero-value { font-size: 36px; font-weight: 700; color: #7c3aed; line-height: 1.1; }
+  .inv-hero-stats { display: flex; gap: 8px; margin-top: 16px; }
+  .inv-stat { flex: 1; background: var(--bg); border-radius: 10px; padding: 10px 8px; text-align: center; min-width: 0; }
+  .inv-stat-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .inv-stat-value { font-size: 13px; font-weight: 700; color: var(--text); }
+  .inv-stat-value.positive { color: var(--green); }
+  .inv-stat-value.negative { color: #e05252; }
+  .inv-range-row { display: flex; gap: 4px; padding: 14px 16px 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .inv-range-btn { flex-shrink: 0; padding: 5px 11px; border-radius: 6px; border: 1px solid var(--border); background: none; color: var(--text-muted); font-size: 12px; font-weight: 500; cursor: pointer; transition: background 0.15s, color 0.15s; white-space: nowrap; }
+  .inv-range-btn.active { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+  .inv-chart-legend { display: flex; gap: 16px; justify-content: center; padding: 6px 0 12px; font-size: 12px; color: var(--text-muted); align-items: center; }
+  .inv-month-row { display: grid; grid-template-columns: 76px 1fr 1fr 50px; align-items: center; gap: 8px; padding: 9px 16px; border-top: 1px solid var(--border); }
+  .inv-month-row.future { opacity: 0.4; }
+  .inv-month-row.current { background: #f5f0ff; }
+  html[data-theme="dark"] .inv-month-row.current { background: #1e1530; }
+  .inv-month-label { font-size: 13px; font-weight: 500; color: var(--text); }
+  .inv-month-field { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .inv-month-field label { font-size: 10px; color: var(--text-muted); white-space: nowrap; }
+  .inv-month-field input { width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; font-size: 13px; background: var(--surface); color: var(--text); }
+  .inv-month-field input:focus { outline: none; border-color: #7c3aed; box-shadow: 0 0 0 2px rgba(124,58,237,0.15); }
+  .inv-month-perf { font-size: 12px; font-weight: 600; text-align: right; }
+  .inv-month-perf.pos { color: var(--green); }
+  .inv-month-perf.neg { color: #e05252; }
+  @media (max-width: 400px) {
+    .inv-month-row { grid-template-columns: 60px 1fr 1fr; }
+    .inv-month-perf { display: none; }
+  }
 </style>
 </head>
 <body>
@@ -503,6 +537,7 @@
     <button class="nav-tab active" data-view="prijmy">Příjmy</button>
     <button class="nav-tab" data-view="podnikani">Podnikání</button>
     <button class="nav-tab" data-view="vydaje">Výdaje</button>
+    <button class="nav-tab" data-view="investice">Investice</button>
     <button class="theme-toggle" id="themeToggle" title="Přepnout tmavý/světlý režim">
       <svg id="iconSun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
@@ -739,6 +774,59 @@
 
   </div><!-- /view-vydaje -->
 
+  <!-- ═══════════════ INVESTICE VIEW ═══════════════ -->
+  <div id="view-investice" style="display:none">
+
+    <div class="card">
+      <div class="inv-hero">
+        <div class="inv-hero-label">Aktuální hodnota portfolia</div>
+        <div class="inv-hero-value" id="i-heroValue">— Kč</div>
+        <div class="inv-hero-stats">
+          <div class="inv-stat">
+            <div class="inv-stat-label">Vloženo celkem</div>
+            <div class="inv-stat-value" id="i-statInvested">—</div>
+          </div>
+          <div class="inv-stat">
+            <div class="inv-stat-label">Zisk / ztráta</div>
+            <div class="inv-stat-value" id="i-statGain">—</div>
+          </div>
+          <div class="inv-stat">
+            <div class="inv-stat-label">Výnos celkem</div>
+            <div class="inv-stat-value" id="i-statYield">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="inv-range-row">
+        <button class="inv-range-btn active" data-range="vse">Vše</button>
+        <button class="inv-range-btn" data-range="5r">5 let</button>
+        <button class="inv-range-btn" data-range="4r">4 roky</button>
+        <button class="inv-range-btn" data-range="3r">3 roky</button>
+        <button class="inv-range-btn" data-range="2r">2 roky</button>
+        <button class="inv-range-btn" data-range="1r">1 rok</button>
+        <button class="inv-range-btn" data-range="ytd">YTD</button>
+        <button class="inv-range-btn" data-range="1m">1M</button>
+      </div>
+      <svg class="chart" id="i-chart" height="260" style="margin-top:4px"></svg>
+      <div class="inv-chart-legend">
+        <span><span class="legend-dot" style="background:#7c3aed"></span>Hodnota portfolia</span>
+        <span><span class="legend-dot" style="background:var(--c-past-blue);border:1px dashed var(--c-past-blue)"></span>Vloženo</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="app-header">
+        <span class="app-title">Záznamy 2026+</span>
+        <select class="year-select" id="i-yearSelect"></select>
+        <button class="btn btn-primary" id="i-btnAddYear">+ Nový rok</button>
+      </div>
+      <div id="i-monthRows"></div>
+    </div>
+
+  </div><!-- /view-investice -->
+
 </div><!-- /container -->
 
 <div class="dialog-overlay" id="dialogOverlay">
@@ -868,6 +956,7 @@ document.getElementById('themeToggle').addEventListener('click', () => {
   setTimeout(() => {
     if (activeView === 'prijmy') PRIJMY.scheduleCharts();
     else if (activeView === 'podnikani') PODNIKANI.scheduleCharts();
+    else if (activeView === 'investice') INVESTICE.scheduleCharts();
     else VYDAJE.scheduleCharts();
   }, 50);
 });
@@ -916,9 +1005,11 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
     document.getElementById('view-prijmy').style.display    = view === 'prijmy'    ? '' : 'none';
     document.getElementById('view-podnikani').style.display = view === 'podnikani' ? '' : 'none';
     document.getElementById('view-vydaje').style.display    = view === 'vydaje'    ? '' : 'none';
+    document.getElementById('view-investice').style.display = view === 'investice' ? '' : 'none';
     if (view === 'prijmy')    PRIJMY.scheduleCharts();
     if (view === 'podnikani') PODNIKANI.scheduleCharts();
     if (view === 'vydaje')    VYDAJE.scheduleCharts();
+    if (view === 'investice') INVESTICE.scheduleCharts();
   });
 });
 
@@ -2012,16 +2103,284 @@ const VYDAJE = (() => {
   return { init, scheduleCharts };
 })();
 
+/* ════════════════════════════════════════════
+   INVESTICE MODULE
+════════════════════════════════════════════ */
+const INVESTICE = (() => {
+  const STORAGE_KEY = 'fin_investice_v1';
+
+  /* Lineárně interpolovaná historická data (2021-11 → 2025-12) */
+  const HISTORY = (() => {
+    const anchors = [
+      { y:2021, m:10, inv:0,      val:0      },
+      { y:2021, m:12, inv:75700,  val:68206  },
+      { y:2022, m:12, inv:103900, val:46650  },
+      { y:2023, m:12, inv:151800, val:183910 },
+      { y:2024, m:12, inv:280750, val:460477 },
+      { y:2025, m:12, inv:561000, val:749860 },
+    ];
+    const h = {};
+    for (let i = 0; i < anchors.length - 1; i++) {
+      const a = anchors[i], b = anchors[i+1];
+      const sa = a.y*12+a.m, sb = b.y*12+b.m, steps = sb-sa;
+      for (let s = 1; s <= steps; s++) {
+        const abs = sa+s, t = s/steps;
+        const yr = Math.floor((abs-1)/12), mo = abs-yr*12;
+        h[`${yr}-${String(mo).padStart(2,'0')}`] = {
+          invested: Math.round(a.inv + (b.inv-a.inv)*t),
+          value:    Math.round(a.val + (b.val-a.val)*t),
+        };
+      }
+    }
+    return h;
+  })();
+
+  let data = { liveYears: ['2026'], months: {}, currentLiveYear: '2026' };
+
+  function loadData() {
+    try { const s = localStorage.getItem(STORAGE_KEY); if (s) data = Object.assign(data, JSON.parse(s)); } catch(e) {}
+    if (!data.liveYears || !data.liveYears.length) data.liveYears = ['2026'];
+    if (!data.months) data.months = {};
+    if (!data.currentLiveYear) data.currentLiveYear = data.liveYears[data.liveYears.length-1];
+  }
+
+  function saveData() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {} }
+
+  function getMonthData(key) {
+    if (HISTORY[key]) return { ...HISTORY[key] };
+    const d = data.months[key] || {};
+    return { invested: d.invested || 0, value: d.value || 0 };
+  }
+
+  function getAllKeys() {
+    const live = Object.keys(data.months).filter(k => { const d=data.months[k]; return (d.invested||0)>0||(d.value||0)>0; });
+    return [...new Set([...Object.keys(HISTORY), ...live])].sort();
+  }
+
+  function getLatestData() {
+    const keys = getAllKeys();
+    if (!keys.length) return { invested:0, value:0 };
+    return getMonthData(keys[keys.length-1]);
+  }
+
+  function shiftKey(baseKey, months) {
+    const [y,m] = baseKey.split('-').map(Number);
+    const abs = y*12+m+months;
+    const yr = Math.floor((abs-1)/12), mo = abs-yr*12;
+    return `${yr}-${String(mo).padStart(2,'0')}`;
+  }
+
+  function getFilteredKeys(range) {
+    const all = getAllKeys();
+    if (!all.length) return [];
+    const last = all[all.length-1];
+    switch(range) {
+      case '1m':  return all.slice(-2);
+      case 'ytd': { const yr=last.split('-')[0]; return all.filter(k=>k>=`${yr}-01`); }
+      case '1r':  { const cut=shiftKey(last,-12); return all.filter(k=>k>cut); }
+      case '2r':  { const cut=shiftKey(last,-24); return all.filter(k=>k>cut); }
+      case '3r':  { const cut=shiftKey(last,-36); return all.filter(k=>k>cut); }
+      case '4r':  { const cut=shiftKey(last,-48); return all.filter(k=>k>cut); }
+      case '5r':  { const cut=shiftKey(last,-60); return all.filter(k=>k>cut); }
+      default:    return all;
+    }
+  }
+
+  let activeRange = 'vse';
+
+  function updateHero() {
+    const d = getLatestData();
+    const gain = d.value - d.invested;
+    const pct  = d.invested > 0 ? gain/d.invested*100 : 0;
+    const valEl = document.getElementById('i-heroValue');
+    if (valEl) countUp(valEl, d.value);
+    const invEl = document.getElementById('i-statInvested');
+    if (invEl) invEl.textContent = fmt(d.invested);
+    const gainEl = document.getElementById('i-statGain');
+    if (gainEl) {
+      gainEl.textContent = (gain>=0?'+':'')+fmt(gain);
+      gainEl.className = 'inv-stat-value '+(gain>=0?'positive':'negative');
+    }
+    const pctEl = document.getElementById('i-statYield');
+    if (pctEl) {
+      pctEl.textContent = (pct>=0?'+':'')+pct.toFixed(1).replace('.',',')+' %';
+      pctEl.className = 'inv-stat-value '+(pct>=0?'positive':'negative');
+    }
+  }
+
+  function renderChart() {
+    const svg = document.getElementById('i-chart');
+    svg.innerHTML = '';
+    const keys = getFilteredKeys(activeRange);
+    if (keys.length < 2) {
+      svg.setAttribute('viewBox','0 0 300 60'); svg.setAttribute('height',60);
+      svg.appendChild(svgEl('text',{x:150,y:35,'text-anchor':'middle','font-size':'12',fill:cssVar('--c-label')})).textContent='Nedostatek dat pro zvolené období';
+      return;
+    }
+    const mobile = isMobile();
+    const W = getChartWidth(svg), H = mobile?200:260;
+    const PT=14, PB=mobile?30:32, PL=mobile?8:56, PR=12;
+    const pH=H-PT-PB, pW=W-PL-PR;
+    svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.setAttribute('height',H);
+
+    const pts = keys.map(k=>getMonthData(k));
+    const vals = pts.map(p=>p.value), invs = pts.map(p=>p.invested);
+    const maxV = Math.max(...vals,...invs,1);
+    const cx = i => PL+(i/(keys.length-1))*pW;
+    const cy = v => PT+pH-(v/maxV)*pH;
+
+    /* Grid */
+    const gs = niceStep(maxV, mobile?3:5);
+    for (let v=gs; v<=maxV*1.05; v+=gs) {
+      const gy=cy(v); if(gy<PT) break;
+      svg.appendChild(svgEl('line',{x1:PL,y1:gy,x2:W-PR,y2:gy,stroke:cssVar('--c-grid'),'stroke-width':1}));
+      if (!mobile) svg.appendChild(svgEl('text',{x:PL-5,y:gy+3,'font-size':'9',fill:cssVar('--c-grid-label'),'text-anchor':'end'})).textContent=fmtShort(v);
+    }
+
+    /* Fill area between lines */
+    const profit = vals[vals.length-1]-invs[invs.length-1];
+    const fillC = profit>=0?'#7c3aed':'#e05252';
+    let poly = keys.map((_,i)=>`${cx(i)},${cy(vals[i])}`).join(' ');
+    for (let i=keys.length-1;i>=0;i--) poly+=` ${cx(i)},${cy(invs[i])}`;
+    svg.appendChild(svgEl('polygon',{points:poly,fill:fillC,opacity:'0.1'}));
+
+    /* Invested line (dashed) */
+    const iPath = keys.map((_,i)=>`${i===0?'M':'L'}${cx(i)},${cy(invs[i])}`).join(' ');
+    svg.appendChild(svgEl('path',{d:iPath,fill:'none',stroke:cssVar('--c-past-blue'),'stroke-width':'2','stroke-dasharray':'5,3'}));
+
+    /* Value line */
+    const vPath = keys.map((_,i)=>`${i===0?'M':'L'}${cx(i)},${cy(vals[i])}`).join(' ');
+    svg.appendChild(svgEl('path',{d:vPath,fill:'none',stroke:'#7c3aed','stroke-width':'2.5'}));
+
+    /* X-axis labels */
+    const n=keys.length;
+    const step = n<=8?1:n<=16?2:n<=30?3:n<=50?6:12;
+    let prevYr='';
+    keys.forEach((k,i) => {
+      if (i%step!==0&&i!==n-1) return;
+      const [yr,mo]=k.split('-');
+      const label = yr!==prevYr?`${MESICE_SHORT[+mo-1]} ${yr}`:MESICE_SHORT[+mo-1];
+      prevYr=yr;
+      svg.appendChild(svgEl('text',{x:cx(i),y:H-PB+(mobile?12:14),'text-anchor':'middle','font-size':mobile?'7':'9',fill:cssVar('--c-label')})).textContent=label;
+    });
+
+    /* End dots */
+    const lx=cx(keys.length-1);
+    svg.appendChild(svgEl('circle',{cx:lx,cy:cy(vals[vals.length-1]),r:'3.5',fill:'#7c3aed'}));
+    svg.appendChild(svgEl('circle',{cx:lx,cy:cy(invs[invs.length-1]),r:'3',fill:cssVar('--c-past-blue')}));
+  }
+
+  function renderYearSelect() {
+    const sel = document.getElementById('i-yearSelect');
+    sel.innerHTML = '';
+    data.liveYears.sort().forEach(y => {
+      const o = document.createElement('option');
+      o.value=y; o.textContent=y;
+      if (y===data.currentLiveYear) o.selected=true;
+      sel.appendChild(o);
+    });
+  }
+
+  function renderEntrySection() {
+    renderYearSelect();
+    const year = data.currentLiveYear;
+    const cont = document.getElementById('i-monthRows');
+    cont.innerHTML = '';
+    const now = new Date();
+    const nowKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+    MESICE_LABELS.forEach((label, idx) => {
+      const monthNum = String(idx+1).padStart(2,'0');
+      const key = `${year}-${monthNum}`;
+      const d = data.months[key] || {};
+      const isFuture = key > nowKey;
+      const isCurrent = key === nowKey;
+
+      const row = document.createElement('div');
+      row.className = 'inv-month-row'+(isFuture?' future':'')+(isCurrent?' current':'');
+
+      const gain = (d.value&&d.invested) ? d.value-d.invested : null;
+      const pct  = gain!==null&&d.invested ? gain/d.invested*100 : null;
+      const perfHtml = pct!==null
+        ? `<span class="inv-month-perf ${pct>=0?'pos':'neg'}">${pct>=0?'+':''}${pct.toFixed(1).replace('.',',')}%</span>`
+        : `<span class="inv-month-perf"></span>`;
+
+      row.innerHTML = `
+        <span class="inv-month-label">${label}</span>
+        <div class="inv-month-field">
+          <label>Hodnota portfolia</label>
+          <input type="number" inputmode="numeric" min="0" step="1" value="${d.value||''}" placeholder="0" data-key="${key}" data-field="value">
+        </div>
+        <div class="inv-month-field">
+          <label>Vloženo celkem</label>
+          <input type="number" inputmode="numeric" min="0" step="1" value="${d.invested||''}" placeholder="0" data-key="${key}" data-field="invested">
+        </div>
+        ${perfHtml}`;
+
+      row.querySelectorAll('input').forEach(inp => {
+        inp.addEventListener('focus', () => inp.select());
+        inp.addEventListener('input', () => {
+          const k=inp.dataset.key, f=inp.dataset.field;
+          if (!data.months[k]) data.months[k]={};
+          data.months[k][f] = parseInt(inp.value,10)||0;
+          saveData();
+          const d2=data.months[k]||{};
+          const g2=(d2.value&&d2.invested)?d2.value-d2.invested:null;
+          const p2=g2!==null&&d2.invested?g2/d2.invested*100:null;
+          const perfEl=row.querySelector('.inv-month-perf');
+          if (perfEl) {
+            perfEl.textContent=p2!==null?`${p2>=0?'+':''}${p2.toFixed(1).replace('.',',')}%`:'';
+            perfEl.className='inv-month-perf'+(p2!==null?(p2>=0?' pos':' neg'):'');
+          }
+          scheduleCharts();
+        });
+      });
+      cont.appendChild(row);
+    });
+  }
+
+  let chartTimer=null;
+  function scheduleCharts() {
+    clearTimeout(chartTimer);
+    chartTimer=setTimeout(()=>{ renderChart(); updateHero(); },80);
+  }
+
+  function setupEvents() {
+    document.querySelectorAll('.inv-range-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeRange=btn.dataset.range;
+        document.querySelectorAll('.inv-range-btn').forEach(b=>b.classList.toggle('active',b.dataset.range===activeRange));
+        renderChart();
+      });
+    });
+    document.getElementById('i-yearSelect').addEventListener('change', e => {
+      data.currentLiveYear=e.target.value; saveData(); renderEntrySection();
+    });
+    document.getElementById('i-btnAddYear').addEventListener('click', () => {
+      const next=String(Math.max(...data.liveYears.map(Number))+1);
+      if (data.liveYears.includes(next)) return;
+      data.liveYears.push(next); data.currentLiveYear=next; saveData();
+      renderEntrySection();
+    });
+  }
+
+  function init() { loadData(); updateHero(); renderChart(); renderEntrySection(); setupEvents(); }
+
+  return { init, scheduleCharts };
+})();
+
 /* ── Init ── */
 PRIJMY.init();
 PODNIKANI.init();
 VYDAJE.init();
+INVESTICE.init();
 PRIJMY.scheduleCharts();
 
 window.addEventListener('resize', ()=>{
   if (activeView==='prijmy') PRIJMY.scheduleCharts();
   else if (activeView==='podnikani') PODNIKANI.scheduleCharts();
   else if (activeView==='vydaje') VYDAJE.scheduleCharts();
+  else if (activeView==='investice') INVESTICE.scheduleCharts();
 });
 </script>
 </body>
