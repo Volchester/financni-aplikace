@@ -792,6 +792,11 @@ const MESICE_SHORT  = ['Led','Úno','Bře','Dub','Kvě','Čer','Čvc','Srp','Zá
 
 const fmt    = n => new Intl.NumberFormat('cs-CZ').format(Math.round(n)) + ' Kč';
 const fmtNum = n => new Intl.NumberFormat('cs-CZ').format(Math.round(n));
+const fmtShort = n => {
+  if (n >= 1000000) return (n/1000000 % 1 === 0 ? n/1000000 : (n/1000000).toFixed(1).replace('.',',')) + 'M';
+  if (n >= 1000)    return (n/1000    % 1 === 0 ? n/1000    : (n/1000   ).toFixed(1).replace('.',',')) + 'k';
+  return String(Math.round(n));
+};
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 function svgEl(tag, attrs) {
@@ -1108,7 +1113,7 @@ const PRIJMY = (() => {
       if (val===0) return;
       const bh=Math.max(2,(val/maxVal)*pH), x=PL+i*gap+(gap-bW)/2, y=PT+pH-bh;
       svg.appendChild(svgEl('rect',{x,y,width:bW,height:bh,fill:color,rx:2}));
-      if (!mobile) svg.appendChild(svgEl('text',{x:x+bW/2,y:y-3,'text-anchor':'middle','font-size':'9',fill:cssVar('--c-val'),'font-weight':'600'})).textContent=fmtNum(val);
+      svg.appendChild(svgEl('text',{x:x+bW/2,y:y-3,'text-anchor':'middle','font-size':mobile?'8':'9',fill:cssVar('--c-val'),'font-weight':'600'})).textContent=mobile?fmtShort(val):fmtNum(val);
     });
   }
 
@@ -1521,7 +1526,7 @@ const PODNIKANI = (() => {
       if (val===0) return;
       const bh=Math.max(2,(val/maxVal)*pH), x=PL+i*gap+(gap-bW)/2, y=PT+pH-bh;
       svg.appendChild(svgEl('rect',{x,y,width:bW,height:bh,fill:'#2eab6f',rx:2}));
-      if (!mobile) svg.appendChild(svgEl('text',{x:x+bW/2,y:y-3,'text-anchor':'middle','font-size':'9',fill:cssVar('--c-val'),'font-weight':'600'})).textContent=fmtNum(val);
+      svg.appendChild(svgEl('text',{x:x+bW/2,y:y-3,'text-anchor':'middle','font-size':mobile?'8':'9',fill:cssVar('--c-val'),'font-weight':'600'})).textContent=mobile?fmtShort(val):fmtNum(val);
     });
   }
 
@@ -1811,7 +1816,7 @@ const VYDAJE = (() => {
       if (val === 0) return;
       const bh = Math.max(2,(val/maxVal)*pH), x = PL+i*gap+(gap-bW)/2, y = PT+pH-bh;
       svg.appendChild(svgEl('rect',{x,y,width:bW,height:bh,fill:'#e05252',rx:2}));
-      if (!mobile) svg.appendChild(svgEl('text',{x:x+bW/2,y:y-3,'text-anchor':'middle','font-size':'9',fill:cssVar('--c-val'),'font-weight':'600'})).textContent=fmtNum(val);
+      svg.appendChild(svgEl('text',{x:x+bW/2,y:y-3,'text-anchor':'middle','font-size':mobile?'8':'9',fill:cssVar('--c-val'),'font-weight':'600'})).textContent=mobile?fmtShort(val):fmtNum(val);
     });
   }
 
