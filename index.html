@@ -308,6 +308,13 @@
   #view-podnikani .comp-tag { font-size: 10px; background: #2eab6f; color: #fff; padding: 1px 6px; border-radius: 10px; white-space: nowrap; }
   #view-vydaje    .comp-tag { font-size: 10px; background: #e05252; color: #fff; padding: 1px 6px; border-radius: 10px; white-space: nowrap; }
   #view-vydaje    .comp-total-inv { width: 100px; font-weight: 600; color: #2eab6f; }
+  #view-vydaje    .comp-group { border-bottom: 1px solid var(--border); }
+  #view-vydaje    .comp-group:last-of-type { border-bottom: none; }
+  #view-vydaje    .comp-group .comparison-row { border-bottom: none; padding: 3px 0; }
+  #view-vydaje    .comp-group .comparison-row:first-child { padding-top: 8px; }
+  #view-vydaje    .comp-group .comparison-row:last-child  { padding-bottom: 8px; }
+  #view-vydaje    .comp-group.current-year { background: #fdeaea; border-radius: 8px; padding: 0 10px; margin: 0 -10px; }
+  html[data-theme="dark"] #view-vydaje .comp-group.current-year { background: #2a1616; }
 
   .celkem-vydelano { display: flex; justify-content: space-between; align-items: center; padding: 12px 0 0; margin-top: 8px; border-top: 2px solid var(--border); }
   .cv-label { color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.04em; }
@@ -717,9 +724,15 @@
         <div class="chart-label" style="margin-bottom:14px">Meziroční srovnání</div>
         <div id="v-compRows"></div>
         <svg class="chart" id="v-chart3" height="60" style="margin-top:14px"></svg>
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0 0;margin-top:8px;border-top:2px solid var(--border)">
-          <span class="vydaje-year-label">Celkem výdaje za rok</span>
-          <span class="vydaje-year-value" id="v-yearTotal">0 Kč</span>
+        <div style="margin-top:8px;border-top:2px solid var(--border)">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 4px">
+            <span class="vydaje-year-label">Celkem výdaje za rok</span>
+            <span class="vydaje-year-value" id="v-yearTotal" style="color:#e05252">0 Kč</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0 10px">
+            <span class="vydaje-year-label">Celkem investice za rok</span>
+            <span class="vydaje-year-value" id="v-yearInvTotal" style="color:#2eab6f">0 Kč</span>
+          </div>
         </div>
       </div>
     </div>
@@ -1895,15 +1908,30 @@ const VYDAJE = (() => {
     const totals = years.map(y => getYearTotal(y));
     const maxT = Math.max(...totals, 1);
     years.forEach((y, i) => {
-      const total = totals[i], filled = getFilledMonths(y), avg = filled > 0 ? total/filled : 0;
+      const filled = getFilledMonths(y);
       const invY = getYearInvestice(y), ostatniY = getYearOstatni(y);
-      const div = document.createElement('div');
-      div.className = 'comparison-row' + (y === currentYear ? ' current-year' : '');
-      div.innerHTML = `<span class="comp-year">${y}</span><span class="comp-total">${fmt(ostatniY)}</span><span class="comp-total-inv">${fmt(invY)}</span><span class="comp-avg">průměr ${fmt(avg)}/měs</span>${y===currentYear?'<span class="comp-tag">aktuální</span>':''}`;
-      cont.appendChild(div);
+      const avgO = filled > 0 ? ostatniY/filled : 0, avgI = filled > 0 ? invY/filled : 0;
+      const isCur = y === currentYear;
+
+      const group = document.createElement('div');
+      group.className = 'comp-group' + (isCur ? ' current-year' : '');
+
+      const row1 = document.createElement('div');
+      row1.className = 'comparison-row';
+      row1.innerHTML = `<span class="comp-year">${y}</span><span class="comp-total">${fmt(ostatniY)}</span><span class="comp-avg">průměr ${fmt(avgO)}/měs</span>${isCur?'<span class="comp-tag">aktuální</span>':''}`;
+
+      const row2 = document.createElement('div');
+      row2.className = 'comparison-row';
+      row2.innerHTML = `<span class="comp-year" style="visibility:hidden">${y}</span><span class="comp-total-inv">${fmt(invY)}</span><span class="comp-avg" style="color:#2eab6f">průměr ${fmt(avgI)}/měs</span>`;
+
+      group.appendChild(row1);
+      group.appendChild(row2);
+      cont.appendChild(group);
     });
     const yearEl = document.getElementById('v-yearTotal');
-    if (yearEl) countUp(yearEl, getYearTotal(currentYear));
+    if (yearEl) countUp(yearEl, getYearOstatni(currentYear));
+    const yearInvEl = document.getElementById('v-yearInvTotal');
+    if (yearInvEl) countUp(yearInvEl, getYearInvestice(currentYear));
     const svg = document.getElementById('v-chart3'); svg.innerHTML = '';
     const W = getChartWidth(svg), bH = 14, g = 22, tH = years.length*g+10;
     svg.setAttribute('viewBox', `0 0 ${W} ${tH}`); svg.setAttribute('height', tH);
