@@ -307,15 +307,19 @@
   .goal-hero-numbers { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
   .goal-hero-now { font-size: 30px; font-weight: 700; color: #2eab6f; white-space: nowrap; }
   .goal-hero-arrow { flex-shrink: 0; color: var(--text-muted); display: flex; align-items: center; }
-  .goal-hero-input-wrap { display: flex; align-items: baseline; gap: 5px; flex: 1; min-width: 120px; }
-  .goal-hero-input {
-    font-size: 30px; font-weight: 700; color: #e8a020; background: transparent;
-    border: none; border-bottom: 2px dashed #e8a020; outline: none;
-    width: 100%; min-width: 0; padding: 0 2px; transition: border-color 0.15s;
+  .goal-hero-target-wrap { display: flex; align-items: baseline; gap: 6px; flex: 1; min-width: 120px; cursor: pointer; }
+  .goal-hero-target {
+    font-size: 30px; font-weight: 700; color: #e8a020;
+    border-bottom: 2px dashed #e8a020; padding-bottom: 1px; line-height: 1.1;
   }
-  .goal-hero-input:focus { border-bottom-style: solid; }
-  .goal-hero-input::placeholder { color: #e8a020; opacity: 0.4; font-size: 20px; }
+  .goal-hero-target.empty { font-size: 18px; color: var(--text-muted); border-bottom-color: var(--border); opacity: 0.7; }
   .goal-hero-kc { font-size: 18px; font-weight: 600; color: #e8a020; flex-shrink: 0; }
+
+  /* Goal dialogs */
+  .goal-dialog-field { display: flex; align-items: center; gap: 10px; border-bottom: 2px solid var(--border); padding-bottom: 6px; margin-bottom: 0; }
+  .goal-dialog-input { flex: 1; font-size: 28px; font-weight: 700; background: transparent; border: none; outline: none; color: var(--text); padding: 4px 0; width: 100%; }
+  .goal-dialog-input:focus { color: var(--text); }
+  .goal-dialog-unit { font-size: 20px; font-weight: 600; color: var(--text-muted); flex-shrink: 0; }
 
   .goal-bar-track { height: 8px; background: var(--border); border-radius: 999px; overflow: hidden; margin-bottom: 8px; }
   .goal-bar-fill { height: 100%; background: #2eab6f; border-radius: 999px; width: 0%; transition: width 0.6s cubic-bezier(0.34,1.56,0.64,1), background 0.3s; }
@@ -333,11 +337,8 @@
   html[data-theme="dark"] .goal-odmena-field.done { background: #163324; }
   .goal-odmena-icon { font-size: 36px; flex-shrink: 0; line-height: 1; }
   .goal-odmena-content { flex: 1; min-width: 0; }
-  .goal-odmena-input {
-    width: 100%; background: transparent; border: none; outline: none;
-    font-size: 22px; font-weight: 700; color: var(--text); padding: 0; margin-bottom: 4px; display: block;
-  }
-  .goal-odmena-input::placeholder { color: var(--text-muted); font-weight: 400; font-size: 18px; }
+  .goal-odmena-display { font-size: 22px; font-weight: 700; color: #e8a020; display: block; margin-bottom: 4px; cursor: pointer; }
+  .goal-odmena-display.empty { color: var(--text-muted); font-weight: 400; font-size: 16px; opacity: 0.7; }
   .goal-odmena-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); display: block; }
 
   /* ── Status bar ── */
@@ -384,7 +385,7 @@
     .chart-section { padding: 12px; }
     svg.chart { height: 160px !important; }
     .goal-hero-numbers { flex-direction: column; align-items: flex-start; }
-    .goal-hero-input-wrap { min-width: 0; width: 100%; }
+    .goal-hero-target-wrap { min-width: 0; width: 100%; }
   }
 
   @media (min-width: 601px) {
@@ -549,19 +550,19 @@
                 <polyline points="28,2 42,9 28,16"/>
               </svg>
             </span>
-            <div class="goal-hero-input-wrap">
-              <input type="text" id="b-goalAmount" class="goal-hero-input" inputmode="numeric" placeholder="Nastav cíl">
-              <span class="goal-hero-kc">Kč</span>
+            <div class="goal-hero-target-wrap" id="b-goalTargetWrap">
+              <span class="goal-hero-target empty" id="b-goalTargetText">Nastav cíl</span>
+              <span class="goal-hero-kc" id="b-goalTargetKc" style="display:none">Kč</span>
             </div>
           </div>
           <div id="b-goalProgressWrap" style="display:none">
             <div class="goal-bar-track"><div class="goal-bar-fill" id="b-goalBarFill"></div></div>
             <div class="goal-stats" id="b-goalStats"></div>
           </div>
-          <div class="goal-odmena-field" id="b-goalOdmenaField">
+          <div class="goal-odmena-field" id="b-goalOdmenaField" style="cursor:pointer">
             <span class="goal-odmena-icon">🏆</span>
             <div class="goal-odmena-content">
-              <input type="text" id="b-goalOdmena" class="goal-odmena-input" placeholder="Co si dáš za odměnu?">
+              <span class="goal-odmena-display empty" id="b-goalOdmenaDisplay">Klikni pro zadání odměny…</span>
               <span class="goal-odmena-label" id="b-goalOdmenaLabel">Odměna za splnění cíle</span>
             </div>
           </div>
@@ -580,6 +581,35 @@
     <div class="dialog-buttons">
       <button class="btn" id="dialogCancel">Zrušit</button>
       <button class="btn btn-danger" id="dialogConfirm">Smazat</button>
+    </div>
+  </div>
+</div>
+
+<div class="dialog-overlay" id="b-goalAmountOverlay">
+  <div class="dialog">
+    <h3>Cílová částka</h3>
+    <p>Jakou celkovou částku chceš vydělat z podnikání?</p>
+    <div class="goal-dialog-field">
+      <input type="number" id="b-goalAmountInput" class="goal-dialog-input" inputmode="numeric" min="0" step="1000" placeholder="400 000">
+      <span class="goal-dialog-unit">Kč</span>
+    </div>
+    <div class="dialog-buttons" style="margin-top:24px">
+      <button class="btn" id="b-goalAmountCancel">Zrušit</button>
+      <button class="btn btn-primary" id="b-goalAmountConfirm">Uložit</button>
+    </div>
+  </div>
+</div>
+
+<div class="dialog-overlay" id="b-goalOdmenaOverlay">
+  <div class="dialog">
+    <h3>Odměna za splnění cíle</h3>
+    <p>Co si dopřeješ, až cíl splníš?</p>
+    <div class="goal-dialog-field">
+      <input type="text" id="b-goalOdmenaInput" class="goal-dialog-input" placeholder="iPad, dovolená…">
+    </div>
+    <div class="dialog-buttons" style="margin-top:24px">
+      <button class="btn" id="b-goalOdmenaCancel">Zrušit</button>
+      <button class="btn btn-primary" id="b-goalOdmenaConfirm">Uložit</button>
     </div>
   </div>
 </div>
@@ -1181,10 +1211,6 @@ const PODNIKANI = (() => {
 
   /* ── Goal hero ── */
   function renderGoalCard() {
-    const goal = getGoal();
-    const inp = document.getElementById('b-goalAmount');
-    inp.value = goal.amount ? new Intl.NumberFormat('cs-CZ').format(goal.amount) : '';
-    document.getElementById('b-goalOdmena').value = goal.odmena || '';
     updateGoalProgress();
   }
 
@@ -1195,6 +1221,27 @@ const PODNIKANI = (() => {
     const over    = hasGoal && total >= goal.amount;
 
     document.getElementById('b-goalHeroNow').textContent = fmt(total);
+
+    const targetText = document.getElementById('b-goalTargetText');
+    const targetKc   = document.getElementById('b-goalTargetKc');
+    if (hasGoal) {
+      targetText.textContent = new Intl.NumberFormat('cs-CZ').format(goal.amount);
+      targetText.classList.remove('empty');
+      targetKc.style.display = '';
+    } else {
+      targetText.textContent = 'Nastav cíl';
+      targetText.classList.add('empty');
+      targetKc.style.display = 'none';
+    }
+
+    const odmenaDisplay = document.getElementById('b-goalOdmenaDisplay');
+    if (goal.odmena) {
+      odmenaDisplay.textContent = goal.odmena;
+      odmenaDisplay.classList.remove('empty');
+    } else {
+      odmenaDisplay.textContent = 'Klikni pro zadání odměny…';
+      odmenaDisplay.classList.add('empty');
+    }
 
     const wrap = document.getElementById('b-goalProgressWrap');
     if (hasGoal) {
@@ -1219,30 +1266,48 @@ const PODNIKANI = (() => {
   }
 
   function setupGoalEvents() {
-    let goalTimer = null;
-    const amountInp = document.getElementById('b-goalAmount');
-    const odmenaInp = document.getElementById('b-goalOdmena');
+    function openOverlay(id) { document.getElementById(id).classList.add('open'); }
+    function closeOverlay(id) { document.getElementById(id).classList.remove('open'); }
 
-    amountInp.addEventListener('focus', () => {
-      const raw = (data.goal && data.goal.amount) ? String(data.goal.amount) : '';
-      amountInp.value = raw;
-    });
-    amountInp.addEventListener('blur', () => {
-      const raw = parseInt(amountInp.value.replace(/\s/g,''), 10) || 0;
-      if (raw) amountInp.value = new Intl.NumberFormat('cs-CZ').format(raw);
-      else amountInp.value = '';
-    });
+    /* ── Cílová částka ── */
+    const amountOverlay = document.getElementById('b-goalAmountOverlay');
+    const amountInput   = document.getElementById('b-goalAmountInput');
 
-    function onGoalChange() {
+    document.getElementById('b-goalTargetWrap').addEventListener('click', () => {
+      amountInput.value = (data.goal && data.goal.amount) ? data.goal.amount : '';
+      openOverlay('b-goalAmountOverlay');
+      setTimeout(() => amountInput.focus(), 80);
+    });
+    document.getElementById('b-goalAmountCancel').addEventListener('click', () => closeOverlay('b-goalAmountOverlay'));
+    amountOverlay.addEventListener('click', e => { if (e.target === amountOverlay) closeOverlay('b-goalAmountOverlay'); });
+    document.getElementById('b-goalAmountConfirm').addEventListener('click', () => {
       if (!data.goal) data.goal = {};
-      data.goal.amount = parseInt(amountInp.value.replace(/\s/g,''), 10) || 0;
-      data.goal.odmena = odmenaInp.value;
+      data.goal.amount = parseInt(amountInput.value, 10) || 0;
+      closeOverlay('b-goalAmountOverlay');
       updateGoalProgress();
-      clearTimeout(goalTimer);
-      goalTimer = setTimeout(saveData, 300);
-    }
-    amountInp.addEventListener('input', onGoalChange);
-    odmenaInp.addEventListener('input', onGoalChange);
+      saveData();
+    });
+    amountInput.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('b-goalAmountConfirm').click(); });
+
+    /* ── Odměna ── */
+    const odmenaOverlay = document.getElementById('b-goalOdmenaOverlay');
+    const odmenaInput   = document.getElementById('b-goalOdmenaInput');
+
+    document.getElementById('b-goalOdmenaField').addEventListener('click', () => {
+      odmenaInput.value = (data.goal && data.goal.odmena) ? data.goal.odmena : '';
+      openOverlay('b-goalOdmenaOverlay');
+      setTimeout(() => odmenaInput.focus(), 80);
+    });
+    document.getElementById('b-goalOdmenaCancel').addEventListener('click', () => closeOverlay('b-goalOdmenaOverlay'));
+    odmenaOverlay.addEventListener('click', e => { if (e.target === odmenaOverlay) closeOverlay('b-goalOdmenaOverlay'); });
+    document.getElementById('b-goalOdmenaConfirm').addEventListener('click', () => {
+      if (!data.goal) data.goal = {};
+      data.goal.odmena = odmenaInput.value;
+      closeOverlay('b-goalOdmenaOverlay');
+      updateGoalProgress();
+      saveData();
+    });
+    odmenaInput.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('b-goalOdmenaConfirm').click(); });
   }
 
   function getMonthsForAverage(y) {
