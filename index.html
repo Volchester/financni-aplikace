@@ -325,20 +325,20 @@
   .goal-pct.over { color: #e8a020; }
 
   .goal-odmena-field {
-    display: flex; align-items: center; gap: 10px; padding: 10px 14px;
-    border-radius: 10px; background: var(--bg); border: 1px solid var(--border);
+    display: flex; align-items: center; gap: 16px; padding: 16px 18px;
+    border-radius: 14px; background: var(--bg); border: 1px solid var(--border);
     transition: background 0.3s, border-color 0.3s;
   }
   .goal-odmena-field.done { background: var(--green-light); border-color: #2eab6f; }
   html[data-theme="dark"] .goal-odmena-field.done { background: #163324; }
-  .goal-odmena-icon { font-size: 18px; flex-shrink: 0; }
+  .goal-odmena-icon { font-size: 36px; flex-shrink: 0; line-height: 1; }
   .goal-odmena-content { flex: 1; min-width: 0; }
-  .goal-odmena-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); display: block; margin-bottom: 3px; }
   .goal-odmena-input {
     width: 100%; background: transparent; border: none; outline: none;
-    font-size: 14px; font-weight: 600; color: var(--text); padding: 0;
+    font-size: 22px; font-weight: 700; color: var(--text); padding: 0; margin-bottom: 4px; display: block;
   }
-  .goal-odmena-input::placeholder { color: var(--text-muted); font-weight: 400; }
+  .goal-odmena-input::placeholder { color: var(--text-muted); font-weight: 400; font-size: 18px; }
+  .goal-odmena-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); display: block; }
 
   /* ── Status bar ── */
   .statusbar {
@@ -559,10 +559,10 @@
             <div class="goal-stats" id="b-goalStats"></div>
           </div>
           <div class="goal-odmena-field" id="b-goalOdmenaField">
-            <span class="goal-odmena-icon">🎯</span>
+            <span class="goal-odmena-icon">🏆</span>
             <div class="goal-odmena-content">
-              <span class="goal-odmena-label" id="b-goalOdmenaLabel">Odměna za splnění cíle</span>
               <input type="text" id="b-goalOdmena" class="goal-odmena-input" placeholder="Co si dáš za odměnu?">
+              <span class="goal-odmena-label" id="b-goalOdmenaLabel">Odměna za splnění cíle</span>
             </div>
           </div>
         </div>
