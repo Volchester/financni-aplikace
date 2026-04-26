@@ -30,6 +30,7 @@
     --c-val: #4a6080;
     --c-past-blue: #b0c2e0;
     --c-past-green: #a8d5be;
+    --c-past-red: #f0b0b0;
   }
 
   html[data-theme="dark"] {
@@ -48,6 +49,7 @@
     --c-val: #7a90b0;
     --c-past-blue: #2a4070;
     --c-past-green: #1a4a30;
+    --c-past-red: #4a2020;
   }
 
   body {
@@ -277,6 +279,7 @@
   .mfc-row .mfc-label { color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
   #view-prijmy    .mfc-row .mfc-value-total { color: #2d6be4; font-weight: 700; font-size: 18px; }
   #view-podnikani .mfc-row .mfc-value-total { color: #2eab6f; font-weight: 700; font-size: 18px; }
+  #view-vydaje    .mfc-row .mfc-value-total { color: #e05252; font-weight: 700; font-size: 18px; }
   .mfc-row .mfc-value-avg { color: var(--text-muted); font-weight: 500; }
 
   /* ── Charts ── */
@@ -292,14 +295,18 @@
   .comparison-row:last-of-type { border-bottom: none; }
   #view-prijmy    .comparison-row.current-year { background: #e8efff; border-radius: 8px; padding: 8px 10px; margin: 0 -10px; }
   #view-podnikani .comparison-row.current-year { background: #e6f7f0; border-radius: 8px; padding: 8px 10px; margin: 0 -10px; }
+  #view-vydaje    .comparison-row.current-year { background: #fdeaea; border-radius: 8px; padding: 8px 10px; margin: 0 -10px; }
   html[data-theme="dark"] #view-prijmy    .comparison-row.current-year { background: #1a2248; }
   html[data-theme="dark"] #view-podnikani .comparison-row.current-year { background: #163224; }
+  html[data-theme="dark"] #view-vydaje    .comparison-row.current-year { background: #2a1616; }
   .comp-year { font-weight: 700; width: 44px; color: var(--text); }
   #view-prijmy    .comp-total { width: 110px; font-weight: 600; color: #2d6be4; }
   #view-podnikani .comp-total { width: 110px; font-weight: 600; color: #2eab6f; }
+  #view-vydaje    .comp-total { width: 110px; font-weight: 600; color: #e05252; }
   .comp-avg { color: var(--text-muted); flex: 1; }
   #view-prijmy    .comp-tag { font-size: 10px; background: #2d6be4; color: #fff; padding: 1px 6px; border-radius: 10px; white-space: nowrap; }
   #view-podnikani .comp-tag { font-size: 10px; background: #2eab6f; color: #fff; padding: 1px 6px; border-radius: 10px; white-space: nowrap; }
+  #view-vydaje    .comp-tag { font-size: 10px; background: #e05252; color: #fff; padding: 1px 6px; border-radius: 10px; white-space: nowrap; }
 
   .celkem-vydelano { display: flex; justify-content: space-between; align-items: center; padding: 12px 0 0; margin-top: 8px; border-top: 2px solid var(--border); }
   .cv-label { color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.04em; }
@@ -669,9 +676,41 @@
 
     <div id="v-accordion"></div>
 
+    <div class="mobile-footer-card" id="v-mobileFooter">
+      <div class="mfc-row">
+        <span class="mfc-label">Dohromady za rok</span>
+        <span class="mfc-value-total" id="v-mFootTotal">0 Kč</span>
+      </div>
+      <div class="mfc-row">
+        <span class="mfc-label">Průměr / měsíc</span>
+        <span class="mfc-value-avg" id="v-mFootAvg">0 Kč</span>
+      </div>
+    </div>
+
     <div class="card">
-      <div class="vydaje-year-card">
-        <div class="vydaje-year-total">
+      <div class="chart-section">
+        <div class="chart-label">Měsíční výdaje</div>
+        <svg class="chart" id="v-chart1" height="200"></svg>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chart-section">
+        <div class="chart-label">Investice vs. Ostatní výdaje</div>
+        <div class="chart-legend">
+          <span><span class="legend-dot" style="background:#e05252"></span>Ostatní výdaje</span>
+          <span><span class="legend-dot" style="background:#2eab6f"></span>Investice</span>
+        </div>
+        <svg class="chart" id="v-chart2" height="200"></svg>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="comparison-section">
+        <div class="chart-label" style="margin-bottom:14px">Meziroční srovnání</div>
+        <div id="v-compRows"></div>
+        <svg class="chart" id="v-chart3" height="60" style="margin-top:14px"></svg>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0 0;margin-top:8px;border-top:2px solid var(--border)">
           <span class="vydaje-year-label">Celkem výdaje za rok</span>
           <span class="vydaje-year-value" id="v-yearTotal">0 Kč</span>
         </div>
@@ -803,7 +842,8 @@ document.getElementById('themeToggle').addEventListener('click', () => {
   applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark');
   setTimeout(() => {
     if (activeView === 'prijmy') PRIJMY.scheduleCharts();
-    else PODNIKANI.scheduleCharts();
+    else if (activeView === 'podnikani') PODNIKANI.scheduleCharts();
+    else VYDAJE.scheduleCharts();
   }, 50);
 });
 
@@ -853,6 +893,7 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
     document.getElementById('view-vydaje').style.display    = view === 'vydaje'    ? '' : 'none';
     if (view === 'prijmy')    PRIJMY.scheduleCharts();
     if (view === 'podnikani') PODNIKANI.scheduleCharts();
+    if (view === 'vydaje')    VYDAJE.scheduleCharts();
   });
 });
 
@@ -1734,13 +1775,105 @@ const VYDAJE = (() => {
     const sum = document.getElementById('v-sum-' + mk);
     if (hdr) { hdr.textContent = total > 0 ? fmt(total) : '—'; hdr.className = 'vydaje-card-total' + (total > 0 ? ' has-data' : ''); }
     if (sum) sum.textContent = fmt(total);
-    updateYearTotal();
+    scheduleCharts();
   }
 
-  function updateYearTotal() {
-    const el = document.getElementById('v-yearTotal');
-    if (el) el.textContent = fmt(getYearTotal(currentYear));
+  function getFilledMonths(y) {
+    return MESICE_KEYS.filter(mk => getMonthTotal(getMonthData(y, mk)) > 0).length;
   }
+
+  function updateFooter() {
+    const total  = getYearTotal(currentYear);
+    const filled = getFilledMonths(currentYear);
+    const avg    = filled > 0 ? total / filled : 0;
+    const mTotal = document.getElementById('v-mFootTotal');
+    const mAvg   = document.getElementById('v-mFootAvg');
+    if (mTotal) mTotal.textContent = fmt(total);
+    if (mAvg)   mAvg.textContent  = fmt(avg);
+  }
+
+  function renderChart1() {
+    const svg = document.getElementById('v-chart1'); svg.innerHTML = '';
+    const values = MESICE_KEYS.map(mk => getMonthTotal(getMonthData(currentYear, mk)));
+    const maxVal = Math.max(...values, 1);
+    const mobile = isMobile(), H = mobile?160:200, PT = mobile?18:24, PB = mobile?24:30, PL = 8, PR = 8;
+    const W = getChartWidth(svg), pH = H-PT-PB;
+    const gap = (W-PL-PR)/values.length, bW = Math.max(6, gap*0.6);
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    const gs = niceStep(maxVal, mobile?3:5);
+    for (let v=gs; v<=maxVal*1.05; v+=gs) {
+      const y = PT+pH-(v/maxVal)*pH; if(y<PT) break;
+      svg.appendChild(svgEl('line',{x1:PL,y1:y,x2:W-PR,y2:y,stroke:cssVar('--c-grid'),'stroke-width':1}));
+      if (!mobile) svg.appendChild(svgEl('text',{x:PL,y:y-3,'font-size':'9',fill:cssVar('--c-grid-label'),'text-anchor':'start'})).textContent=fmtNum(v);
+    }
+    values.forEach((val, i) => {
+      const cx = PL+i*gap+gap/2;
+      svg.appendChild(svgEl('text',{x:cx,y:PT+pH+(mobile?14:16),'text-anchor':'middle','font-size':mobile?'9':'10',fill:val===0?cssVar('--c-empty'):cssVar('--c-label')})).textContent=MESICE_SHORT[i];
+      if (val === 0) return;
+      const bh = Math.max(2,(val/maxVal)*pH), x = PL+i*gap+(gap-bW)/2, y = PT+pH-bh;
+      svg.appendChild(svgEl('rect',{x,y,width:bW,height:bh,fill:'#e05252',rx:2}));
+      if (!mobile) svg.appendChild(svgEl('text',{x:x+bW/2,y:y-3,'text-anchor':'middle','font-size':'9',fill:cssVar('--c-val'),'font-weight':'600'})).textContent=fmtNum(val);
+    });
+  }
+
+  function renderChart2() {
+    const svg = document.getElementById('v-chart2'); svg.innerHTML = '';
+    const valA = MESICE_KEYS.map(mk => {
+      const md = getMonthData(currentYear, mk);
+      let t = 0;
+      FIXED_FIELDS.forEach(f => { if (f.key !== 'investice') t += Number(md[f.key]) || 0; });
+      (md.extra || []).forEach(e => { t += Number(e.amount) || 0; });
+      return t;
+    });
+    const valB = MESICE_KEYS.map(mk => Number(getMonthData(currentYear, mk).investice) || 0);
+    const maxVal = Math.max(...valA.map((a,i) => a+valB[i]), 1);
+    const mobile = isMobile(), H = mobile?160:200, PT = mobile?14:20, PB = mobile?24:30, PL = 8, PR = 8;
+    const W = getChartWidth(svg), pH = H-PT-PB;
+    const gap = (W-PL-PR)/valA.length, bW = Math.max(6, gap*0.6);
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    const gs = niceStep(maxVal, mobile?3:5);
+    for (let v=gs; v<=maxVal*1.05; v+=gs) {
+      const y = PT+pH-(v/maxVal)*pH; if(y<PT) break;
+      svg.appendChild(svgEl('line',{x1:PL,y1:y,x2:W-PR,y2:y,stroke:cssVar('--c-grid'),'stroke-width':1}));
+    }
+    valA.forEach((a, i) => {
+      const b = valB[i], cx = PL+i*gap+gap/2;
+      svg.appendChild(svgEl('text',{x:cx,y:PT+pH+(mobile?14:16),'text-anchor':'middle','font-size':mobile?'9':'10',fill:(a+b)===0?cssVar('--c-empty'):cssVar('--c-label')})).textContent=MESICE_SHORT[i];
+      if (a+b === 0) return;
+      const x = PL+i*gap+(gap-bW)/2;
+      const bhA = (a/maxVal)*pH, bhB = (b/maxVal)*pH;
+      const yA = PT+pH-bhA, yB = yA-bhB;
+      if (bhA > 0) svg.appendChild(svgEl('rect',{x,y:yA,width:bW,height:Math.max(1,bhA),fill:'#e05252',rx:2}));
+      if (bhB > 0) svg.appendChild(svgEl('rect',{x,y:yB,width:bW,height:Math.max(1,bhB),fill:'#2eab6f',rx:b>0?2:0}));
+    });
+  }
+
+  function renderComparison() {
+    const years = Object.keys(data.years).sort();
+    const cont = document.getElementById('v-compRows'); cont.innerHTML = '';
+    const totals = years.map(y => getYearTotal(y));
+    const maxT = Math.max(...totals, 1);
+    years.forEach((y, i) => {
+      const total = totals[i], filled = getFilledMonths(y), avg = filled > 0 ? total/filled : 0;
+      const div = document.createElement('div');
+      div.className = 'comparison-row' + (y === currentYear ? ' current-year' : '');
+      div.innerHTML = `<span class="comp-year">${y}</span><span class="comp-total">${fmt(total)}</span><span class="comp-avg">průměr ${fmt(avg)}/měs</span>${y===currentYear?'<span class="comp-tag">aktuální</span>':''}`;
+      cont.appendChild(div);
+    });
+    const yearEl = document.getElementById('v-yearTotal');
+    if (yearEl) countUp(yearEl, getYearTotal(currentYear));
+    const svg = document.getElementById('v-chart3'); svg.innerHTML = '';
+    const W = getChartWidth(svg), bH = 14, g = 22, tH = years.length*g+10;
+    svg.setAttribute('viewBox', `0 0 ${W} ${tH}`); svg.setAttribute('height', tH);
+    years.forEach((y, i) => {
+      const bw = (totals[i]/maxT)*(W-110), by = i*g+4;
+      svg.appendChild(svgEl('rect',{x:0,y:by,width:Math.max(2,bw),height:bH,fill:y===currentYear?'#e05252':cssVar('--c-past-red'),rx:3}));
+      svg.appendChild(svgEl('text',{x:Math.max(2,bw)+6,y:by+bH-2,'font-size':'11',fill:cssVar('--c-val'),'font-weight':'600'})).textContent=`${y}: ${fmt(totals[i])}`;
+    });
+  }
+
+  let chartTimer = null;
+  function scheduleCharts() { clearTimeout(chartTimer); chartTimer = setTimeout(() => { renderChart1(); renderChart2(); renderComparison(); updateFooter(); }, 80); }
 
   function openAddExpenseDialog(mk) {
     addExpenseMonth = mk;
@@ -1801,9 +1934,9 @@ const VYDAJE = (() => {
     amountInp.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('v-addExpenseConfirm').click(); });
   }
 
-  function init() { initData(); renderYearSelect(); renderAccordion(); setupEvents(); }
+  function init() { initData(); renderYearSelect(); renderAccordion(); setupEvents(); scheduleCharts(); }
 
-  return { init };
+  return { init, scheduleCharts };
 })();
 
 /* ── Init ── */
@@ -1815,6 +1948,7 @@ PRIJMY.scheduleCharts();
 window.addEventListener('resize', ()=>{
   if (activeView==='prijmy') PRIJMY.scheduleCharts();
   else if (activeView==='podnikani') PODNIKANI.scheduleCharts();
+  else if (activeView==='vydaje') VYDAJE.scheduleCharts();
 });
 </script>
 </body>
