@@ -804,14 +804,14 @@
 
     <div class="card">
       <div class="inv-range-row">
-        <button class="inv-range-btn active" data-range="vse">Vše</button>
-        <button class="inv-range-btn" data-range="5r">5 let</button>
-        <button class="inv-range-btn" data-range="4r">4 roky</button>
-        <button class="inv-range-btn" data-range="3r">3 roky</button>
-        <button class="inv-range-btn" data-range="2r">2 roky</button>
-        <button class="inv-range-btn" data-range="1r">1 rok</button>
-        <button class="inv-range-btn" data-range="ytd">YTD</button>
-        <button class="inv-range-btn" data-range="1m">1M</button>
+        <button class="inv-range-btn active" data-range="vse" onclick="INVESTICE.setRange('vse')">Vše</button>
+        <button class="inv-range-btn" data-range="5r" onclick="INVESTICE.setRange('5r')">5 let</button>
+        <button class="inv-range-btn" data-range="4r" onclick="INVESTICE.setRange('4r')">4 roky</button>
+        <button class="inv-range-btn" data-range="3r" onclick="INVESTICE.setRange('3r')">3 roky</button>
+        <button class="inv-range-btn" data-range="2r" onclick="INVESTICE.setRange('2r')">2 roky</button>
+        <button class="inv-range-btn" data-range="1r" onclick="INVESTICE.setRange('1r')">1 rok</button>
+        <button class="inv-range-btn" data-range="ytd" onclick="INVESTICE.setRange('ytd')">YTD</button>
+        <button class="inv-range-btn" data-range="1m" onclick="INVESTICE.setRange('1m')">1M</button>
       </div>
       <svg class="chart" id="i-chart" height="260" style="margin-top:4px"></svg>
       <div class="inv-chart-legend">
@@ -823,8 +823,8 @@
     <div class="card" style="margin-bottom:8px">
       <div class="app-header">
         <span class="app-title">Záznamy</span>
-        <select class="year-select" id="i-yearSelect"></select>
-        <button class="btn btn-primary" id="i-btnAddYear">+ Nový rok</button>
+        <select class="year-select" id="i-yearSelect" onchange="INVESTICE.setYear(this.value)"></select>
+        <button class="btn btn-primary" id="i-btnAddYear" onclick="INVESTICE.addYear()">+ Nový rok</button>
       </div>
     </div>
     <div id="i-accordion"></div>
@@ -2305,44 +2305,48 @@ const INVESTICE = (() => {
             <input type="number" inputmode="numeric" min="0" step="1" value="${d.invested||''}" placeholder="0" data-key="${key}" data-field="invested">
           </div>
         </div>`;
-      header.addEventListener('click',()=>card.classList.toggle('open'));
-      body.querySelectorAll('input').forEach(inp=>{
-        inp.addEventListener('focus',()=>inp.select());
-        inp.addEventListener('input',()=>{
-          const k=inp.dataset.key,f=inp.dataset.field;
-          if(!data.months[k]) data.months[k]={};
-          data.months[k][f]=parseInt(inp.value,10)||0;
-          saveData(); updateCardHeader(k); scheduleCharts();
-        });
-      });
       card.appendChild(header); card.appendChild(body); cont.appendChild(card);
     });
+    // Event delegation pro rozbalení karet a editaci inputů
+    cont.addEventListener('click', e=>{
+      const header=e.target.closest('.inv-card-header');
+      if(header) header.parentElement.classList.toggle('open');
+    });
+    cont.addEventListener('input', e=>{
+      const inp=e.target;
+      if(!inp.dataset.key) return;
+      const k=inp.dataset.key, f=inp.dataset.field;
+      if(!data.months[k]) data.months[k]={};
+      data.months[k][f]=parseInt(inp.value,10)||0;
+      saveData(); updateCardHeader(k); scheduleCharts();
+    });
+    cont.addEventListener('focus', e=>{
+      if(e.target.tagName==='INPUT') e.target.select();
+    }, true);
   }
 
   let chartTimer=null;
   function scheduleCharts(){clearTimeout(chartTimer);chartTimer=setTimeout(()=>{renderChart();updateHero();},80);}
 
-  function setupEvents() {
-    document.querySelectorAll('.inv-range-btn').forEach(btn=>{
-      btn.addEventListener('click',()=>{
-        activeRange=btn.dataset.range;
-        document.querySelectorAll('.inv-range-btn').forEach(b=>b.classList.toggle('active',b.dataset.range===activeRange));
-        renderChart();
-      });
-    });
-    document.getElementById('i-yearSelect').addEventListener('change',e=>{
-      data.currentYear=e.target.value; saveData(); renderAccordion();
-    });
-    document.getElementById('i-btnAddYear').addEventListener('click',()=>{
-      const years=getAllYears().map(Number), next=String(Math.max(...years)+1);
-      if(!data.extraYears.includes(next)) data.extraYears.push(next);
-      data.currentYear=next; saveData(); renderAccordion();
-    });
+  function setRange(range){
+    activeRange=range;
+    document.querySelectorAll('.inv-range-btn').forEach(b=>b.classList.toggle('active',b.dataset.range===range));
+    renderChart();
   }
 
-  function init(){initData();updateHero();renderChart();renderAccordion();setupEvents();}
+  function setYear(val){
+    data.currentYear=val; saveData(); renderAccordion();
+  }
 
-  return {init,scheduleCharts};
+  function addYear(){
+    const years=getAllYears().map(Number), next=String(Math.max(...years)+1);
+    if(!data.extraYears.includes(next)) data.extraYears.push(next);
+    data.currentYear=next; saveData(); renderAccordion();
+  }
+
+  function init(){initData();updateHero();renderChart();renderAccordion();}
+
+  return {init, scheduleCharts, setRange, setYear, addYear};
 })();
 
 /* ── Init ── */
