@@ -512,22 +512,26 @@
   .inv-range-btn { flex-shrink: 0; padding: 5px 11px; border-radius: 6px; border: 1px solid var(--border); background: none; color: var(--text-muted); font-size: 12px; font-weight: 500; cursor: pointer; transition: background 0.15s, color 0.15s; white-space: nowrap; }
   .inv-range-btn.active { background: #7c3aed; color: #fff; border-color: #7c3aed; }
   .inv-chart-legend { display: flex; gap: 16px; justify-content: center; padding: 6px 0 12px; font-size: 12px; color: var(--text-muted); align-items: center; }
-  .inv-month-row { display: grid; grid-template-columns: 76px 1fr 1fr 50px; align-items: center; gap: 8px; padding: 9px 16px; border-top: 1px solid var(--border); }
-  .inv-month-row.future { opacity: 0.4; }
-  .inv-month-row.current { background: #f5f0ff; }
-  html[data-theme="dark"] .inv-month-row.current { background: #1e1530; }
-  .inv-month-label { font-size: 13px; font-weight: 500; color: var(--text); }
-  .inv-month-field { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-  .inv-month-field label { font-size: 10px; color: var(--text-muted); white-space: nowrap; }
-  .inv-month-field input { width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; font-size: 13px; background: var(--surface); color: var(--text); }
-  .inv-month-field input:focus { outline: none; border-color: #7c3aed; box-shadow: 0 0 0 2px rgba(124,58,237,0.15); }
-  .inv-month-perf { font-size: 12px; font-weight: 600; text-align: right; }
-  .inv-month-perf.pos { color: var(--green); }
-  .inv-month-perf.neg { color: #e05252; }
-  @media (max-width: 400px) {
-    .inv-month-row { grid-template-columns: 60px 1fr 1fr; }
-    .inv-month-perf { display: none; }
-  }
+  .inv-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; overflow: hidden; box-shadow: var(--shadow); }
+  .inv-card-header { display: flex; align-items: center; justify-content: space-between; padding: 13px 16px; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; transition: background 0.15s; }
+  .inv-card-header:hover { background: var(--bg); }
+  .inv-card-info { display: flex; align-items: baseline; gap: 10px; flex: 1; min-width: 0; }
+  .inv-card-month { font-weight: 600; font-size: 15px; color: var(--text); flex-shrink: 0; }
+  .inv-card-value { font-size: 13px; color: var(--text-muted); }
+  .inv-card-value.has-data { color: #7c3aed; font-weight: 600; }
+  .inv-card-yield { font-size: 12px; font-weight: 600; }
+  .inv-card-yield.pos { color: var(--green); }
+  .inv-card-yield.neg { color: #e05252; }
+  .inv-card-chevron { flex-shrink: 0; color: var(--text-muted); transition: transform 0.22s ease; }
+  .inv-card.open .inv-card-chevron { transform: rotate(180deg); }
+  .inv-card-body { display: none; padding: 0 16px 16px; border-top: 1px solid var(--border); }
+  .inv-card.open .inv-card-body { display: block; }
+  .inv-card-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-top: 14px; }
+  .inv-card-field { display: flex; flex-direction: column; gap: 4px; }
+  .inv-card-field label { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+  .inv-card-field input { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 14px; background: var(--surface); color: var(--text); }
+  .inv-card-field input:focus { outline: none; border-color: #7c3aed; box-shadow: 0 0 0 2px rgba(124,58,237,0.15); }
+  .inv-card.inv-future { opacity: 0.45; }
 </style>
 </head>
 <body>
@@ -816,14 +820,14 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" style="margin-bottom:8px">
       <div class="app-header">
-        <span class="app-title">Záznamy 2026+</span>
+        <span class="app-title">Záznamy</span>
         <select class="year-select" id="i-yearSelect"></select>
         <button class="btn btn-primary" id="i-btnAddYear">+ Nový rok</button>
       </div>
-      <div id="i-monthRows"></div>
     </div>
+    <div id="i-accordion"></div>
 
   </div><!-- /view-investice -->
 
@@ -2135,238 +2139,205 @@ const INVESTICE = (() => {
     return h;
   })();
 
-  let data = { liveYears: ['2026'], months: {}, currentLiveYear: '2026' };
+  let data = { months:{}, currentYear:'2026', extraYears:['2026'] };
 
-  function loadData() {
-    try { const s = localStorage.getItem(STORAGE_KEY); if (s) data = Object.assign(data, JSON.parse(s)); } catch(e) {}
-    if (!data.liveYears || !data.liveYears.length) data.liveYears = ['2026'];
-    if (!data.months) data.months = {};
-    if (!data.currentLiveYear) data.currentLiveYear = data.liveYears[data.liveYears.length-1];
+  function initData() {
+    try { const s=localStorage.getItem(STORAGE_KEY); if(s) data=Object.assign({months:{},currentYear:'2026',extraYears:['2026']},JSON.parse(s)); } catch(e) {}
+    if (!data.months) data.months={};
+    if (!data.extraYears||!data.extraYears.length) data.extraYears=['2026'];
+    if (!data.currentYear) data.currentYear='2026';
+    Object.entries(HISTORY).forEach(([k,v])=>{ if(!data.months[k]) data.months[k]={...v}; });
+    saveData();
   }
 
-  function saveData() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {} }
+  function saveData() { try { localStorage.setItem(STORAGE_KEY,JSON.stringify(data)); } catch(e) {} }
+
+  function getAllYears() {
+    return [...new Set(['2021','2022','2023','2024','2025',...data.extraYears])].sort();
+  }
+
+  function getMonthsForYear(yr) {
+    return yr==='2021'?['11','12']:['01','02','03','04','05','06','07','08','09','10','11','12'];
+  }
 
   function getMonthData(key) {
-    if (HISTORY[key]) return { ...HISTORY[key] };
-    const d = data.months[key] || {};
-    return { invested: d.invested || 0, value: d.value || 0 };
+    const d=data.months[key]||{}; return {invested:d.invested||0,value:d.value||0};
   }
 
   function getAllKeys() {
-    const live = Object.keys(data.months).filter(k => { const d=data.months[k]; return (d.invested||0)>0||(d.value||0)>0; });
-    return [...new Set([...Object.keys(HISTORY), ...live])].sort();
+    return Object.keys(data.months).filter(k=>{const d=data.months[k];return(d.invested||0)>0||(d.value||0)>0;}).sort();
   }
 
   function getLatestData() {
-    const keys = getAllKeys();
-    if (!keys.length) return { invested:0, value:0 };
+    const keys=getAllKeys(); if(!keys.length) return {invested:0,value:0};
     return getMonthData(keys[keys.length-1]);
   }
 
-  function shiftKey(baseKey, months) {
-    const [y,m] = baseKey.split('-').map(Number);
-    const abs = y*12+m+months;
-    const yr = Math.floor((abs-1)/12), mo = abs-yr*12;
+  function shiftKey(baseKey, n) {
+    const [y,m]=baseKey.split('-').map(Number), abs=y*12+m+n;
+    const yr=Math.floor((abs-1)/12), mo=abs-yr*12;
     return `${yr}-${String(mo).padStart(2,'0')}`;
   }
 
   function getFilteredKeys(range) {
-    const all = getAllKeys();
-    if (!all.length) return [];
-    const last = all[all.length-1];
+    const all=getAllKeys(); if(!all.length) return [];
+    const last=all[all.length-1];
     switch(range) {
       case '1m':  return all.slice(-2);
-      case 'ytd': { const yr=last.split('-')[0]; return all.filter(k=>k>=`${yr}-01`); }
-      case '1r':  { const cut=shiftKey(last,-12); return all.filter(k=>k>cut); }
-      case '2r':  { const cut=shiftKey(last,-24); return all.filter(k=>k>cut); }
-      case '3r':  { const cut=shiftKey(last,-36); return all.filter(k=>k>cut); }
-      case '4r':  { const cut=shiftKey(last,-48); return all.filter(k=>k>cut); }
-      case '5r':  { const cut=shiftKey(last,-60); return all.filter(k=>k>cut); }
+      case 'ytd': { const yr=last.slice(0,4); return all.filter(k=>k>=`${yr}-01`); }
+      case '1r':  return all.filter(k=>k>shiftKey(last,-12));
+      case '2r':  return all.filter(k=>k>shiftKey(last,-24));
+      case '3r':  return all.filter(k=>k>shiftKey(last,-36));
+      case '4r':  return all.filter(k=>k>shiftKey(last,-48));
+      case '5r':  return all.filter(k=>k>shiftKey(last,-60));
       default:    return all;
     }
   }
 
-  let activeRange = 'vse';
+  let activeRange='vse';
 
   function updateHero() {
-    const d = getLatestData();
-    const gain = d.value - d.invested;
-    const pct  = d.invested > 0 ? gain/d.invested*100 : 0;
-    const valEl = document.getElementById('i-heroValue');
-    if (valEl) countUp(valEl, d.value);
-    const invEl = document.getElementById('i-statInvested');
-    if (invEl) invEl.textContent = fmt(d.invested);
-    const gainEl = document.getElementById('i-statGain');
-    if (gainEl) {
-      gainEl.textContent = (gain>=0?'+':'')+fmt(gain);
-      gainEl.className = 'inv-stat-value '+(gain>=0?'positive':'negative');
-    }
-    const pctEl = document.getElementById('i-statYield');
-    if (pctEl) {
-      pctEl.textContent = (pct>=0?'+':'')+pct.toFixed(1).replace('.',',')+' %';
-      pctEl.className = 'inv-stat-value '+(pct>=0?'positive':'negative');
-    }
+    const d=getLatestData(), gain=d.value-d.invested, pct=d.invested>0?gain/d.invested*100:0;
+    const valEl=document.getElementById('i-heroValue'); if(valEl) countUp(valEl,d.value);
+    const invEl=document.getElementById('i-statInvested'); if(invEl) invEl.textContent=fmt(d.invested);
+    const gainEl=document.getElementById('i-statGain');
+    if(gainEl){gainEl.textContent=(gain>=0?'+':'')+fmt(gain);gainEl.className='inv-stat-value '+(gain>=0?'positive':'negative');}
+    const pctEl=document.getElementById('i-statYield');
+    if(pctEl){pctEl.textContent=(pct>=0?'+':'')+pct.toFixed(1).replace('.',',')+' %';pctEl.className='inv-stat-value '+(pct>=0?'positive':'negative');}
   }
 
   function renderChart() {
-    const svg = document.getElementById('i-chart');
-    svg.innerHTML = '';
-    const keys = getFilteredKeys(activeRange);
-    if (keys.length < 2) {
+    const svg=document.getElementById('i-chart'); svg.innerHTML='';
+    const keys=getFilteredKeys(activeRange);
+    if(keys.length<2){
       svg.setAttribute('viewBox','0 0 300 60'); svg.setAttribute('height',60);
       svg.appendChild(svgEl('text',{x:150,y:35,'text-anchor':'middle','font-size':'12',fill:cssVar('--c-label')})).textContent='Nedostatek dat pro zvolené období';
       return;
     }
-    const mobile = isMobile();
-    const W = getChartWidth(svg), H = mobile?200:260;
-    const PT=14, PB=mobile?30:32, PL=mobile?8:56, PR=12;
-    const pH=H-PT-PB, pW=W-PL-PR;
+    const mobile=isMobile(), W=getChartWidth(svg), H=mobile?200:260;
+    const PT=14, PB=mobile?30:32, PL=mobile?8:56, PR=12, pH=H-PT-PB, pW=W-PL-PR;
     svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.setAttribute('height',H);
-
-    const pts = keys.map(k=>getMonthData(k));
-    const vals = pts.map(p=>p.value), invs = pts.map(p=>p.invested);
-    const maxV = Math.max(...vals,...invs,1);
-    const cx = i => PL+(i/(keys.length-1))*pW;
-    const cy = v => PT+pH-(v/maxV)*pH;
-
-    /* Grid */
-    const gs = niceStep(maxV, mobile?3:5);
-    for (let v=gs; v<=maxV*1.05; v+=gs) {
+    const pts=keys.map(k=>getMonthData(k)), vals=pts.map(p=>p.value), invs=pts.map(p=>p.invested);
+    const maxV=Math.max(...vals,...invs,1);
+    const cx=i=>PL+(i/(keys.length-1))*pW, cy=v=>PT+pH-(v/maxV)*pH;
+    const gs=niceStep(maxV,mobile?3:5);
+    for(let v=gs;v<=maxV*1.05;v+=gs){
       const gy=cy(v); if(gy<PT) break;
       svg.appendChild(svgEl('line',{x1:PL,y1:gy,x2:W-PR,y2:gy,stroke:cssVar('--c-grid'),'stroke-width':1}));
-      if (!mobile) svg.appendChild(svgEl('text',{x:PL-5,y:gy+3,'font-size':'9',fill:cssVar('--c-grid-label'),'text-anchor':'end'})).textContent=fmtShort(v);
+      if(!mobile) svg.appendChild(svgEl('text',{x:PL-5,y:gy+3,'font-size':'9',fill:cssVar('--c-grid-label'),'text-anchor':'end'})).textContent=fmtShort(v);
     }
-
-    /* Fill area between lines */
-    const profit = vals[vals.length-1]-invs[invs.length-1];
-    const fillC = profit>=0?'#7c3aed':'#e05252';
-    let poly = keys.map((_,i)=>`${cx(i)},${cy(vals[i])}`).join(' ');
-    for (let i=keys.length-1;i>=0;i--) poly+=` ${cx(i)},${cy(invs[i])}`;
+    const profit=vals[vals.length-1]-invs[invs.length-1], fillC=profit>=0?'#7c3aed':'#e05252';
+    let poly=keys.map((_,i)=>`${cx(i)},${cy(vals[i])}`).join(' ');
+    for(let i=keys.length-1;i>=0;i--) poly+=` ${cx(i)},${cy(invs[i])}`;
     svg.appendChild(svgEl('polygon',{points:poly,fill:fillC,opacity:'0.1'}));
-
-    /* Invested line (dashed) */
-    const iPath = keys.map((_,i)=>`${i===0?'M':'L'}${cx(i)},${cy(invs[i])}`).join(' ');
+    const iPath=keys.map((_,i)=>`${i===0?'M':'L'}${cx(i)},${cy(invs[i])}`).join(' ');
     svg.appendChild(svgEl('path',{d:iPath,fill:'none',stroke:cssVar('--c-past-blue'),'stroke-width':'2','stroke-dasharray':'5,3'}));
-
-    /* Value line */
-    const vPath = keys.map((_,i)=>`${i===0?'M':'L'}${cx(i)},${cy(vals[i])}`).join(' ');
+    const vPath=keys.map((_,i)=>`${i===0?'M':'L'}${cx(i)},${cy(vals[i])}`).join(' ');
     svg.appendChild(svgEl('path',{d:vPath,fill:'none',stroke:'#7c3aed','stroke-width':'2.5'}));
-
-    /* X-axis labels */
-    const n=keys.length;
-    const step = n<=8?1:n<=16?2:n<=30?3:n<=50?6:12;
+    const n=keys.length, step=n<=8?1:n<=16?2:n<=30?3:n<=50?6:12;
     let prevYr='';
-    keys.forEach((k,i) => {
-      if (i%step!==0&&i!==n-1) return;
+    keys.forEach((k,i)=>{
+      if(i%step!==0&&i!==n-1) return;
       const [yr,mo]=k.split('-');
-      const label = yr!==prevYr?`${MESICE_SHORT[+mo-1]} ${yr}`:MESICE_SHORT[+mo-1];
-      prevYr=yr;
+      const label=yr!==prevYr?`${MESICE_SHORT[+mo-1]} ${yr}`:MESICE_SHORT[+mo-1]; prevYr=yr;
       svg.appendChild(svgEl('text',{x:cx(i),y:H-PB+(mobile?12:14),'text-anchor':'middle','font-size':mobile?'7':'9',fill:cssVar('--c-label')})).textContent=label;
     });
-
-    /* End dots */
     const lx=cx(keys.length-1);
     svg.appendChild(svgEl('circle',{cx:lx,cy:cy(vals[vals.length-1]),r:'3.5',fill:'#7c3aed'}));
     svg.appendChild(svgEl('circle',{cx:lx,cy:cy(invs[invs.length-1]),r:'3',fill:cssVar('--c-past-blue')}));
   }
 
   function renderYearSelect() {
-    const sel = document.getElementById('i-yearSelect');
-    sel.innerHTML = '';
-    data.liveYears.sort().forEach(y => {
-      const o = document.createElement('option');
-      o.value=y; o.textContent=y;
-      if (y===data.currentLiveYear) o.selected=true;
+    const sel=document.getElementById('i-yearSelect'); sel.innerHTML='';
+    getAllYears().forEach(y=>{
+      const o=document.createElement('option'); o.value=y; o.textContent=y;
+      if(y===data.currentYear) o.selected=true;
       sel.appendChild(o);
     });
   }
 
-  function renderEntrySection() {
+  function updateCardHeader(key) {
+    const safe=key.replace(/-/g,'_');
+    const d=data.months[key]||{}, gain=(d.value&&d.invested)?d.value-d.invested:null;
+    const pct=gain!==null&&d.invested?gain/d.invested*100:null;
+    const valEl=document.getElementById('i-val-'+safe);
+    if(valEl){valEl.textContent=d.value?fmt(d.value):'—';valEl.className='inv-card-value'+(d.value?' has-data':'');}
+    const yEl=document.getElementById('i-yield-'+safe);
+    if(yEl){
+      if(pct!==null){yEl.textContent=`${pct>=0?'+':''}${pct.toFixed(1).replace('.',',')}%`;yEl.className=`inv-card-yield ${pct>=0?'pos':'neg'}`;yEl.style.display='';}
+      else yEl.style.display='none';
+    }
+  }
+
+  function renderAccordion() {
     renderYearSelect();
-    const year = data.currentLiveYear;
-    const cont = document.getElementById('i-monthRows');
-    cont.innerHTML = '';
-    const now = new Date();
-    const nowKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-
-    MESICE_LABELS.forEach((label, idx) => {
-      const monthNum = String(idx+1).padStart(2,'0');
-      const key = `${year}-${monthNum}`;
-      const d = data.months[key] || {};
-      const isFuture = key > nowKey;
-      const isCurrent = key === nowKey;
-
-      const row = document.createElement('div');
-      row.className = 'inv-month-row'+(isFuture?' future':'')+(isCurrent?' current':'');
-
-      const gain = (d.value&&d.invested) ? d.value-d.invested : null;
-      const pct  = gain!==null&&d.invested ? gain/d.invested*100 : null;
-      const perfHtml = pct!==null
-        ? `<span class="inv-month-perf ${pct>=0?'pos':'neg'}">${pct>=0?'+':''}${pct.toFixed(1).replace('.',',')}%</span>`
-        : `<span class="inv-month-perf"></span>`;
-
-      row.innerHTML = `
-        <span class="inv-month-label">${label}</span>
-        <div class="inv-month-field">
-          <label>Hodnota portfolia</label>
-          <input type="number" inputmode="numeric" min="0" step="1" value="${d.value||''}" placeholder="0" data-key="${key}" data-field="value">
+    const cont=document.getElementById('i-accordion'); cont.innerHTML='';
+    const year=data.currentYear, months=getMonthsForYear(year);
+    const now=new Date(), nowKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    months.forEach(mo=>{
+      const key=`${year}-${mo}`, safe=key.replace(/-/g,'_');
+      const d=data.months[key]||{}, isFuture=key>nowKey;
+      const gain=(d.value&&d.invested)?d.value-d.invested:null, pct=gain!==null&&d.invested?gain/d.invested*100:null;
+      const card=document.createElement('div');
+      card.className='inv-card'+(isFuture?' inv-future':''); card.id='i-card-'+safe;
+      const header=document.createElement('div'); header.className='inv-card-header';
+      header.innerHTML=`
+        <div class="inv-card-info">
+          <span class="inv-card-month">${MESICE_LABELS[+mo-1]}</span>
+          <span class="inv-card-value${d.value?' has-data':''}" id="i-val-${safe}">${d.value?fmt(d.value):'—'}</span>
+          <span class="inv-card-yield ${pct!==null?(pct>=0?'pos':'neg'):''}" id="i-yield-${safe}" style="${pct===null?'display:none':''}">${pct!==null?`${pct>=0?'+':''}${pct.toFixed(1).replace('.',',')}%`:''}</span>
         </div>
-        <div class="inv-month-field">
-          <label>Vloženo celkem</label>
-          <input type="number" inputmode="numeric" min="0" step="1" value="${d.invested||''}" placeholder="0" data-key="${key}" data-field="invested">
-        </div>
-        ${perfHtml}`;
-
-      row.querySelectorAll('input').forEach(inp => {
-        inp.addEventListener('focus', () => inp.select());
-        inp.addEventListener('input', () => {
-          const k=inp.dataset.key, f=inp.dataset.field;
-          if (!data.months[k]) data.months[k]={};
-          data.months[k][f] = parseInt(inp.value,10)||0;
-          saveData();
-          const d2=data.months[k]||{};
-          const g2=(d2.value&&d2.invested)?d2.value-d2.invested:null;
-          const p2=g2!==null&&d2.invested?g2/d2.invested*100:null;
-          const perfEl=row.querySelector('.inv-month-perf');
-          if (perfEl) {
-            perfEl.textContent=p2!==null?`${p2>=0?'+':''}${p2.toFixed(1).replace('.',',')}%`:'';
-            perfEl.className='inv-month-perf'+(p2!==null?(p2>=0?' pos':' neg'):'');
-          }
-          scheduleCharts();
+        <svg class="inv-card-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
+      const body=document.createElement('div'); body.className='inv-card-body';
+      body.innerHTML=`
+        <div class="inv-card-fields">
+          <div class="inv-card-field">
+            <label>Hodnota portfolia</label>
+            <input type="number" inputmode="numeric" min="0" step="1" value="${d.value||''}" placeholder="0" data-key="${key}" data-field="value">
+          </div>
+          <div class="inv-card-field">
+            <label>Vloženo celkem</label>
+            <input type="number" inputmode="numeric" min="0" step="1" value="${d.invested||''}" placeholder="0" data-key="${key}" data-field="invested">
+          </div>
+        </div>`;
+      header.addEventListener('click',()=>card.classList.toggle('open'));
+      body.querySelectorAll('input').forEach(inp=>{
+        inp.addEventListener('focus',()=>inp.select());
+        inp.addEventListener('input',()=>{
+          const k=inp.dataset.key,f=inp.dataset.field;
+          if(!data.months[k]) data.months[k]={};
+          data.months[k][f]=parseInt(inp.value,10)||0;
+          saveData(); updateCardHeader(k); scheduleCharts();
         });
       });
-      cont.appendChild(row);
+      card.appendChild(header); card.appendChild(body); cont.appendChild(card);
     });
   }
 
   let chartTimer=null;
-  function scheduleCharts() {
-    clearTimeout(chartTimer);
-    chartTimer=setTimeout(()=>{ renderChart(); updateHero(); },80);
-  }
+  function scheduleCharts(){clearTimeout(chartTimer);chartTimer=setTimeout(()=>{renderChart();updateHero();},80);}
 
   function setupEvents() {
-    document.querySelectorAll('.inv-range-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+    document.querySelectorAll('.inv-range-btn').forEach(btn=>{
+      btn.addEventListener('click',()=>{
         activeRange=btn.dataset.range;
         document.querySelectorAll('.inv-range-btn').forEach(b=>b.classList.toggle('active',b.dataset.range===activeRange));
         renderChart();
       });
     });
-    document.getElementById('i-yearSelect').addEventListener('change', e => {
-      data.currentLiveYear=e.target.value; saveData(); renderEntrySection();
+    document.getElementById('i-yearSelect').addEventListener('change',e=>{
+      data.currentYear=e.target.value; saveData(); renderAccordion();
     });
-    document.getElementById('i-btnAddYear').addEventListener('click', () => {
-      const next=String(Math.max(...data.liveYears.map(Number))+1);
-      if (data.liveYears.includes(next)) return;
-      data.liveYears.push(next); data.currentLiveYear=next; saveData();
-      renderEntrySection();
+    document.getElementById('i-btnAddYear').addEventListener('click',()=>{
+      const years=getAllYears().map(Number), next=String(Math.max(...years)+1);
+      if(!data.extraYears.includes(next)) data.extraYears.push(next);
+      data.currentYear=next; saveData(); renderAccordion();
     });
   }
 
-  function init() { loadData(); updateHero(); renderChart(); renderEntrySection(); setupEvents(); }
+  function init(){initData();updateHero();renderChart();renderAccordion();setupEvents();}
 
-  return { init, scheduleCharts };
+  return {init,scheduleCharts};
 })();
 
 /* ── Init ── */
