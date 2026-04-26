@@ -1135,6 +1135,8 @@ const PRIJMY = (() => {
       const x=PL+i*gap+(gap-bW)/2, bhA=(a/maxVal)*pH, bhB=(b/maxVal)*pH, yA=PT+pH-bhA, yB=yA-bhB;
       if (bhA>0) svg.appendChild(svgEl('rect',{x,y:yA,width:bW,height:Math.max(1,bhA),fill:'#2d6be4',rx:2}));
       if (bhB>0) svg.appendChild(svgEl('rect',{x,y:yB,width:bW,height:Math.max(1,bhB),fill:'#2eab6f',rx:b>0?2:0}));
+      const topY=b>0?yB:yA;
+      svg.appendChild(svgEl('text',{x:cx,y:topY-3,'text-anchor':'middle','font-size':mobile?'8':'9',fill:cssVar('--c-val'),'font-weight':'600'})).textContent=mobile?fmtShort(a+b):fmtNum(a+b);
     });
   }
 
@@ -1849,6 +1851,8 @@ const VYDAJE = (() => {
       const yA = PT+pH-bhA, yB = yA-bhB;
       if (bhA > 0) svg.appendChild(svgEl('rect',{x,y:yA,width:bW,height:Math.max(1,bhA),fill:'#e05252',rx:2}));
       if (bhB > 0) svg.appendChild(svgEl('rect',{x,y:yB,width:bW,height:Math.max(1,bhB),fill:'#2eab6f',rx:b>0?2:0}));
+      const topY = b > 0 ? yB : yA;
+      svg.appendChild(svgEl('text',{x:cx,y:topY-3,'text-anchor':'middle','font-size':mobile?'8':'9',fill:cssVar('--c-val'),'font-weight':'600'})).textContent=mobile?fmtShort(a+b):fmtNum(a+b);
     });
   }
 
