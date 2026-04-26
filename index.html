@@ -102,6 +102,7 @@
   }
   .nav-tab.active[data-view="prijmy"]    { background: #2d6be4; color: #fff; font-weight: 600; }
   .nav-tab.active[data-view="podnikani"] { background: #2eab6f; color: #fff; font-weight: 600; }
+  .nav-tab.active[data-view="vydaje"]    { background: #e05252; color: #fff; font-weight: 600; }
   .nav-tab:not(.active):hover { background: var(--bg); }
 
   .theme-toggle {
@@ -127,6 +128,7 @@
   }
   #view-prijmy    .year-select:focus { border-color: #2d6be4; }
   #view-podnikani .year-select:focus { border-color: #2eab6f; }
+  #view-vydaje    .year-select:focus { border-color: #e05252; }
 
   .btn {
     display: inline-flex; align-items: center; justify-content: center;
@@ -138,6 +140,7 @@
   .btn:active { opacity: 0.75; }
   #view-prijmy    .btn-primary { background: #2d6be4; color: #fff; border-color: #2d6be4; }
   #view-podnikani .btn-primary { background: #2eab6f; color: #fff; border-color: #2eab6f; }
+  #view-vydaje    .btn-primary { background: #e05252; color: #fff; border-color: #e05252; }
   .btn-danger { color: #c0392b; border-color: #e8b4b0; }
   .btn:disabled { opacity: 0.35; pointer-events: none; }
   html[data-theme="dark"] .btn-danger { color: #e05a50; border-color: #5a2a28; }
@@ -341,6 +344,87 @@
   .goal-odmena-display.empty { color: var(--text-muted); font-weight: 400; font-size: 16px; opacity: 0.7; }
   .goal-odmena-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); display: block; }
 
+  /* ── Výdaje accordion ── */
+  .vydaje-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; margin-bottom: 8px; overflow: hidden;
+    box-shadow: var(--shadow); transition: background 0.2s, border-color 0.2s;
+  }
+  .vydaje-card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; cursor: pointer; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.15s;
+  }
+  .vydaje-card-header:hover { background: var(--bg); }
+  .vydaje-card-info { display: flex; align-items: baseline; gap: 10px; }
+  .vydaje-card-month { font-weight: 600; font-size: 15px; color: var(--text); }
+  .vydaje-card-total { font-size: 13px; color: var(--text-muted); }
+  .vydaje-card-total.has-data { color: #e05252; font-weight: 600; }
+  .vydaje-chevron { flex-shrink: 0; color: var(--text-muted); transition: transform 0.22s ease; }
+  .vydaje-card.open .vydaje-chevron { transform: rotate(180deg); }
+
+  .vydaje-card-body { padding: 0 16px 16px; border-top: 1px solid var(--border); }
+  .vydaje-fields {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px;
+    padding: 14px 0 14px;
+  }
+  .vydaje-field { display: flex; flex-direction: column; gap: 5px; }
+  .vydaje-field label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+  .vydaje-field input {
+    padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg); color: var(--text); font-size: 15px; outline: none;
+    text-align: right; transition: border-color 0.15s, box-shadow 0.15s; width: 100%;
+  }
+  .vydaje-field input:focus { border-color: #e05252; box-shadow: 0 0 0 3px rgba(224,82,82,0.12); }
+
+  .vydaje-extra { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+  .vydaje-extra-item {
+    display: flex; align-items: center; gap: 8px; padding: 9px 12px;
+    background: var(--bg); border-radius: 8px; border: 1px solid var(--border);
+  }
+  .vydaje-extra-name { flex: 1; font-size: 14px; color: var(--text); }
+  .vydaje-extra-amount { font-size: 14px; font-weight: 600; color: #e05252; white-space: nowrap; }
+  .vydaje-extra-del {
+    background: none; border: none; cursor: pointer; color: var(--text-muted);
+    padding: 3px; display: flex; align-items: center; border-radius: 4px;
+    transition: color 0.15s; -webkit-tap-highlight-color: transparent;
+  }
+  .vydaje-extra-del:hover { color: #e05252; }
+
+  .vydaje-add-btn {
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    width: 100%; padding: 10px; border: 1.5px dashed var(--border); border-radius: 8px;
+    background: none; color: var(--text-muted); font-size: 14px; cursor: pointer;
+    margin-bottom: 12px; transition: border-color 0.15s, color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .vydaje-add-btn:hover { border-color: #e05252; color: #e05252; }
+
+  .vydaje-month-sum {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-top: 12px; border-top: 1px solid var(--border);
+  }
+  .vydaje-month-sum-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+  .vydaje-month-sum-value { font-size: 20px; font-weight: 700; color: #e05252; }
+
+  .vydaje-year-card { padding: 16px; }
+  .vydaje-year-total { display: flex; justify-content: space-between; align-items: center; }
+  .vydaje-year-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+  .vydaje-year-value { font-size: 22px; font-weight: 700; color: #e05252; }
+
+  /* Add expense dialog inputs */
+  .vydaje-dialog-fields { display: flex; flex-direction: column; gap: 14px; }
+  .vydaje-dialog-field { display: flex; flex-direction: column; gap: 5px; }
+  .vydaje-dialog-field label { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+  .vydaje-dialog-field input {
+    padding: 11px 14px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg); color: var(--text); font-size: 16px; outline: none;
+    transition: border-color 0.15s; width: 100%;
+  }
+  .vydaje-dialog-field input:focus { border-color: #e05252; }
+  .vydaje-dialog-field input[type=number] { text-align: right; }
+
   /* ── Status bar ── */
   .statusbar {
     position: fixed; bottom: calc(18px + var(--safe-bottom)); left: 50%;
@@ -401,6 +485,7 @@
   <div class="nav-tabs">
     <button class="nav-tab active" data-view="prijmy">Příjmy</button>
     <button class="nav-tab" data-view="podnikani">Podnikání</button>
+    <button class="nav-tab" data-view="vydaje">Výdaje</button>
     <button class="theme-toggle" id="themeToggle" title="Přepnout tmavý/světlý režim">
       <svg id="iconSun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
@@ -572,6 +657,29 @@
 
   </div><!-- /view-podnikani -->
 
+  <!-- ═══════════════ VÝDAJE VIEW ═══════════════ -->
+  <div id="view-vydaje" style="display:none">
+
+    <div class="app-header">
+      <h1 class="app-title">Výdaje</h1>
+      <select class="year-select" id="v-yearSelect"></select>
+      <button class="btn btn-primary" id="v-btnNewYear">+ Nový rok</button>
+      <button class="btn btn-danger" id="v-btnDeleteYear">Smazat</button>
+    </div>
+
+    <div id="v-accordion"></div>
+
+    <div class="card">
+      <div class="vydaje-year-card">
+        <div class="vydaje-year-total">
+          <span class="vydaje-year-label">Celkem výdaje za rok</span>
+          <span class="vydaje-year-value" id="v-yearTotal">0 Kč</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /view-vydaje -->
+
 </div><!-- /container -->
 
 <div class="dialog-overlay" id="dialogOverlay">
@@ -581,6 +689,27 @@
     <div class="dialog-buttons">
       <button class="btn" id="dialogCancel">Zrušit</button>
       <button class="btn btn-danger" id="dialogConfirm">Smazat</button>
+    </div>
+  </div>
+</div>
+
+<div class="dialog-overlay" id="v-addExpenseOverlay">
+  <div class="dialog">
+    <h3>Přidat výdaj</h3>
+    <p>Zadej název a částku — uloží se pouze do tohoto měsíce.</p>
+    <div class="vydaje-dialog-fields">
+      <div class="vydaje-dialog-field">
+        <label>Název výdaje</label>
+        <input type="text" id="v-addExpenseName" placeholder="Auto servis, Léky…">
+      </div>
+      <div class="vydaje-dialog-field">
+        <label>Částka (Kč)</label>
+        <input type="number" id="v-addExpenseAmount" inputmode="numeric" min="0" placeholder="0">
+      </div>
+    </div>
+    <div class="dialog-buttons" style="margin-top:24px">
+      <button class="btn" id="v-addExpenseCancel">Zrušit</button>
+      <button class="btn" style="background:#e05252;color:#fff;border-color:#e05252" id="v-addExpenseConfirm">Přidat</button>
     </div>
   </div>
 </div>
@@ -721,6 +850,7 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
     document.getElementById('view-prijmy').style.display    = view === 'prijmy'    ? '' : 'none';
     document.getElementById('view-podnikani').style.display = view === 'podnikani' ? '' : 'none';
+    document.getElementById('view-vydaje').style.display    = view === 'vydaje'    ? '' : 'none';
     if (view === 'prijmy')    PRIJMY.scheduleCharts();
     if (view === 'podnikani') PODNIKANI.scheduleCharts();
   });
@@ -1421,14 +1551,270 @@ const PODNIKANI = (() => {
   return { init, scheduleCharts };
 })();
 
+/* ════════════════════════════════════════════
+   VÝDAJE MODULE
+════════════════════════════════════════════ */
+const VYDAJE = (() => {
+  const STORAGE_KEY = 'vydaje_app_data';
+  let data = {}, currentYear = String(new Date().getFullYear()), saveTimer = null;
+  let addExpenseMonth = null;
+
+  const FIXED_FIELDS = [
+    { key: 'kreditniKarta', label: 'Kreditní karta' },
+    { key: 'najem',         label: 'Nájem' },
+    { key: 'internet',      label: 'Internet' },
+    { key: 'mobil',         label: 'Mobil' },
+    { key: 'predplatne',    label: 'Předplatné' },
+    { key: 'investice',     label: 'Investice' },
+  ];
+
+  const SEED = { currentYear: String(new Date().getFullYear()), years: {} };
+
+  function emptyMonth() {
+    const m = { extra: [] };
+    FIXED_FIELDS.forEach(f => { m[f.key] = 0; });
+    return m;
+  }
+  function emptyYear() { const y = {}; MESICE_KEYS.forEach(mk => { y[mk] = emptyMonth(); }); return y; }
+
+  function initData() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) { try { data = JSON.parse(raw); currentYear = String(data.currentYear || new Date().getFullYear()); return; } catch(e) {} }
+    data = JSON.parse(JSON.stringify(SEED));
+    data.years[currentYear] = emptyYear();
+    saveData();
+  }
+
+  function saveData() { data.currentYear = currentYear; localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); showStatus(); }
+  function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveData, 300); }
+
+  function getYearData(y) { if (!data.years[y]) data.years[y] = emptyYear(); return data.years[y]; }
+  function getMonthData(y, mk) { const yd = getYearData(y); if (!yd[mk]) yd[mk] = emptyMonth(); return yd[mk]; }
+
+  function getMonthTotal(md) {
+    let t = 0;
+    FIXED_FIELDS.forEach(f => { t += Number(md[f.key]) || 0; });
+    (md.extra || []).forEach(e => { t += Number(e.amount) || 0; });
+    return t;
+  }
+  function getYearTotal(y) {
+    return MESICE_KEYS.reduce((sum, mk) => sum + getMonthTotal(getMonthData(y, mk)), 0);
+  }
+
+  function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  function renderYearSelect() {
+    const sel = document.getElementById('v-yearSelect');
+    const years = Object.keys(data.years).sort();
+    sel.innerHTML = '';
+    years.forEach(y => {
+      const o = document.createElement('option');
+      o.value = y; o.textContent = y;
+      if (y === currentYear) o.selected = true;
+      sel.appendChild(o);
+    });
+    document.getElementById('v-btnDeleteYear').disabled = years.length <= 1;
+  }
+
+  function renderAccordion() {
+    const container = document.getElementById('v-accordion');
+    container.innerHTML = '';
+    const curMonth = MESICE_KEYS[new Date().getMonth()];
+
+    MESICE_KEYS.forEach((mk, i) => {
+      const md = getMonthData(currentYear, mk);
+      const total = getMonthTotal(md);
+      const isOpen = mk === curMonth;
+
+      const card = document.createElement('div');
+      card.className = 'vydaje-card' + (isOpen ? ' open' : '');
+      card.id = 'v-card-' + mk;
+
+      /* Header */
+      const header = document.createElement('div');
+      header.className = 'vydaje-card-header';
+      header.innerHTML = `
+        <div class="vydaje-card-info">
+          <span class="vydaje-card-month">${MESICE_LABELS[i]}</span>
+          <span class="vydaje-card-total${total > 0 ? ' has-data' : ''}" id="v-total-${mk}">${total > 0 ? fmt(total) : '—'}</span>
+        </div>
+        <svg class="vydaje-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>`;
+      card.appendChild(header);
+
+      /* Body */
+      const body = document.createElement('div');
+      body.className = 'vydaje-card-body';
+      body.id = 'v-body-' + mk;
+      if (!isOpen) body.style.display = 'none';
+
+      /* Fixed fields */
+      const fieldsDiv = document.createElement('div');
+      fieldsDiv.className = 'vydaje-fields';
+      FIXED_FIELDS.forEach(f => {
+        const fd = document.createElement('div');
+        fd.className = 'vydaje-field';
+        fd.innerHTML = `<label>${f.label}</label><input type="number" inputmode="numeric" min="0" step="1" value="${md[f.key] || ''}" data-month="${mk}" data-field="${f.key}" placeholder="0">`;
+        fieldsDiv.appendChild(fd);
+      });
+      body.appendChild(fieldsDiv);
+
+      /* Extra items */
+      const extraDiv = document.createElement('div');
+      extraDiv.className = 'vydaje-extra';
+      extraDiv.id = 'v-extra-' + mk;
+      renderExtraItems(extraDiv, mk, md.extra || []);
+      body.appendChild(extraDiv);
+
+      /* Add button */
+      const addBtn = document.createElement('button');
+      addBtn.className = 'vydaje-add-btn';
+      addBtn.dataset.month = mk;
+      addBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Přidat další výdaje`;
+      body.appendChild(addBtn);
+
+      /* Month sum */
+      const sumDiv = document.createElement('div');
+      sumDiv.className = 'vydaje-month-sum';
+      sumDiv.innerHTML = `<span class="vydaje-month-sum-label">Celkem</span><span class="vydaje-month-sum-value" id="v-sum-${mk}">${fmt(total)}</span>`;
+      body.appendChild(sumDiv);
+
+      card.appendChild(body);
+      container.appendChild(card);
+
+      /* Events */
+      header.addEventListener('click', () => {
+        const open = card.classList.toggle('open');
+        body.style.display = open ? '' : 'none';
+      });
+
+      fieldsDiv.querySelectorAll('input').forEach(inp => {
+        inp.addEventListener('focus', () => inp.select());
+        inp.addEventListener('input', () => {
+          getMonthData(currentYear, inp.dataset.month)[inp.dataset.field] = parseInt(inp.value, 10) || 0;
+          updateMonthTotal(inp.dataset.month);
+          scheduleSave();
+        });
+      });
+
+      addBtn.addEventListener('click', () => openAddExpenseDialog(mk));
+    });
+
+    updateYearTotal();
+  }
+
+  function renderExtraItems(container, mk, extras) {
+    container.innerHTML = '';
+    extras.forEach((ex, idx) => {
+      const item = document.createElement('div');
+      item.className = 'vydaje-extra-item';
+      item.innerHTML = `
+        <span class="vydaje-extra-name">${escHtml(ex.name)}</span>
+        <span class="vydaje-extra-amount">${fmt(ex.amount)}</span>
+        <button class="vydaje-extra-del" title="Smazat">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>`;
+      item.querySelector('.vydaje-extra-del').addEventListener('click', () => {
+        const md = getMonthData(currentYear, mk);
+        md.extra.splice(idx, 1);
+        renderExtraItems(container, mk, md.extra);
+        updateMonthTotal(mk);
+        saveData();
+      });
+      container.appendChild(item);
+    });
+  }
+
+  function updateMonthTotal(mk) {
+    const total = getMonthTotal(getMonthData(currentYear, mk));
+    const hdr = document.getElementById('v-total-' + mk);
+    const sum = document.getElementById('v-sum-' + mk);
+    if (hdr) { hdr.textContent = total > 0 ? fmt(total) : '—'; hdr.className = 'vydaje-card-total' + (total > 0 ? ' has-data' : ''); }
+    if (sum) sum.textContent = fmt(total);
+    updateYearTotal();
+  }
+
+  function updateYearTotal() {
+    const el = document.getElementById('v-yearTotal');
+    if (el) el.textContent = fmt(getYearTotal(currentYear));
+  }
+
+  function openAddExpenseDialog(mk) {
+    addExpenseMonth = mk;
+    document.getElementById('v-addExpenseName').value = '';
+    document.getElementById('v-addExpenseAmount').value = '';
+    document.getElementById('v-addExpenseOverlay').classList.add('open');
+    setTimeout(() => document.getElementById('v-addExpenseName').focus(), 80);
+  }
+
+  function setupEvents() {
+    document.getElementById('v-yearSelect').addEventListener('change', e => {
+      currentYear = e.target.value; data.currentYear = currentYear; saveData();
+      renderYearSelect(); renderAccordion();
+    });
+    document.getElementById('v-btnNewYear').addEventListener('click', () => {
+      const years = Object.keys(data.years).map(Number).sort((a,b) => a-b);
+      const suggested = years[years.length-1] + 1;
+      const input = window.prompt(`Přidat nový rok (navrhovaný: ${suggested}):`, suggested);
+      if (input === null) return;
+      const y = parseInt(input, 10);
+      if (isNaN(y) || y < 1900 || y > 2100) { alert('Neplatný rok.'); return; }
+      const ys = String(y);
+      if (data.years[ys]) { alert(`Rok ${ys} již existuje.`); return; }
+      data.years[ys] = emptyYear(); currentYear = ys; data.currentYear = currentYear; saveData();
+      renderYearSelect(); renderAccordion();
+    });
+    document.getElementById('v-btnDeleteYear').addEventListener('click', () => {
+      if (Object.keys(data.years).length <= 1) return;
+      showDialog(`Smazat rok ${currentYear}?`, `Opravdu chcete smazat rok ${currentYear}? Tato akce je nevratná.`, () => {
+        delete data.years[currentYear];
+        const remaining = Object.keys(data.years).sort();
+        currentYear = remaining[remaining.length-1]; data.currentYear = currentYear; saveData();
+        renderYearSelect(); renderAccordion();
+      });
+    });
+
+    /* Add expense dialog */
+    const overlay = document.getElementById('v-addExpenseOverlay');
+    const nameInp   = document.getElementById('v-addExpenseName');
+    const amountInp = document.getElementById('v-addExpenseAmount');
+
+    document.getElementById('v-addExpenseCancel').addEventListener('click', () => overlay.classList.remove('open'));
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+    document.getElementById('v-addExpenseConfirm').addEventListener('click', () => {
+      const name   = nameInp.value.trim();
+      const amount = parseInt(amountInp.value, 10) || 0;
+      if (!name) { nameInp.focus(); return; }
+      const md = getMonthData(currentYear, addExpenseMonth);
+      if (!md.extra) md.extra = [];
+      md.extra.push({ name, amount });
+      overlay.classList.remove('open');
+      const extraDiv = document.getElementById('v-extra-' + addExpenseMonth);
+      if (extraDiv) renderExtraItems(extraDiv, addExpenseMonth, md.extra);
+      updateMonthTotal(addExpenseMonth);
+      saveData();
+    });
+    nameInp.addEventListener('keydown',   e => { if (e.key === 'Enter') amountInp.focus(); });
+    amountInp.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('v-addExpenseConfirm').click(); });
+  }
+
+  function init() { initData(); renderYearSelect(); renderAccordion(); setupEvents(); }
+
+  return { init };
+})();
+
 /* ── Init ── */
 PRIJMY.init();
 PODNIKANI.init();
+VYDAJE.init();
 PRIJMY.scheduleCharts();
 
 window.addEventListener('resize', ()=>{
   if (activeView==='prijmy') PRIJMY.scheduleCharts();
-  else PODNIKANI.scheduleCharts();
+  else if (activeView==='podnikani') PODNIKANI.scheduleCharts();
 });
 </script>
 </body>
