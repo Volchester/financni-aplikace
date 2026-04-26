@@ -2146,6 +2146,11 @@ const INVESTICE = (() => {
     if (!data.months) data.months={};
     if (!data.extraYears||!data.extraYears.length) data.extraYears=['2026'];
     if (!data.currentYear) data.currentYear='2025';
+    const hasYearData = yr => Object.keys(HISTORY).some(k=>k.startsWith(yr+'-')) ||
+      Object.keys(data.months).some(k=>k.startsWith(yr+'-')&&((data.months[k].value||0)>0||(data.months[k].invested||0)>0));
+    if (!hasYearData(data.currentYear)) {
+      data.currentYear = Object.keys(HISTORY).sort().pop().slice(0,4);
+    }
     saveData();
   }
 
