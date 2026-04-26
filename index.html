@@ -2139,14 +2139,13 @@ const INVESTICE = (() => {
     return h;
   })();
 
-  let data = { months:{}, currentYear:'2026', extraYears:['2026'] };
+  let data = { months:{}, currentYear:'2025', extraYears:['2026'] };
 
   function initData() {
-    try { const s=localStorage.getItem(STORAGE_KEY); if(s) data=Object.assign({months:{},currentYear:'2026',extraYears:['2026']},JSON.parse(s)); } catch(e) {}
+    try { const s=localStorage.getItem(STORAGE_KEY); if(s) data=Object.assign({months:{},currentYear:'2025',extraYears:['2026']},JSON.parse(s)); } catch(e) {}
     if (!data.months) data.months={};
     if (!data.extraYears||!data.extraYears.length) data.extraYears=['2026'];
-    if (!data.currentYear) data.currentYear='2026';
-    Object.entries(HISTORY).forEach(([k,v])=>{ if(!data.months[k]) data.months[k]={...v}; });
+    if (!data.currentYear) data.currentYear='2025';
     saveData();
   }
 
@@ -2161,11 +2160,12 @@ const INVESTICE = (() => {
   }
 
   function getMonthData(key) {
-    const d=data.months[key]||{}; return {invested:d.invested||0,value:d.value||0};
+    const d=data.months[key]||HISTORY[key]||{}; return {invested:d.invested||0,value:d.value||0};
   }
 
   function getAllKeys() {
-    return Object.keys(data.months).filter(k=>{const d=data.months[k];return(d.invested||0)>0||(d.value||0)>0;}).sort();
+    const live=Object.keys(data.months).filter(k=>{const d=data.months[k];return(d.invested||0)>0||(d.value||0)>0;});
+    return [...new Set([...Object.keys(HISTORY),...live])].sort();
   }
 
   function getLatestData() {
@@ -2258,7 +2258,7 @@ const INVESTICE = (() => {
 
   function updateCardHeader(key) {
     const safe=key.replace(/-/g,'_');
-    const d=data.months[key]||{}, gain=(d.value&&d.invested)?d.value-d.invested:null;
+    const d=getMonthData(key), gain=(d.value&&d.invested)?d.value-d.invested:null;
     const pct=gain!==null&&d.invested?gain/d.invested*100:null;
     const valEl=document.getElementById('i-val-'+safe);
     if(valEl){valEl.textContent=d.value?fmt(d.value):'—';valEl.className='inv-card-value'+(d.value?' has-data':'');}
@@ -2276,7 +2276,7 @@ const INVESTICE = (() => {
     const now=new Date(), nowKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
     months.forEach(mo=>{
       const key=`${year}-${mo}`, safe=key.replace(/-/g,'_');
-      const d=data.months[key]||{}, isFuture=key>nowKey;
+      const d=getMonthData(key), isFuture=key>nowKey;
       const gain=(d.value&&d.invested)?d.value-d.invested:null, pct=gain!==null&&d.invested?gain/d.invested*100:null;
       const card=document.createElement('div');
       card.className='inv-card'+(isFuture?' inv-future':''); card.id='i-card-'+safe;
