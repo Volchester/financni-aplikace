@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#2d6be4">
+<meta name="theme-color" content="#2d6be4" id="metaTheme">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -17,15 +17,37 @@
     --border: #dde2ea;
     --text: #1e2a3a;
     --text-muted: #6b7a90;
-    --accent: #2d6be4;
-    --accent-light: #e8efff;
     --green: #2eab6f;
     --green-light: #e6f7f0;
-    --row-hover: #f0f4ff;
-    --row-active: #e8efff;
     --shadow: 0 1px 4px rgba(0,0,0,0.08);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-top: env(safe-area-inset-top, 0px);
+    /* chart colors */
+    --c-grid: #e4e8f0;
+    --c-grid-label: #9aaabf;
+    --c-empty: #ccd3de;
+    --c-label: #6b7a90;
+    --c-val: #4a6080;
+    --c-past-blue: #b0c2e0;
+    --c-past-green: #a8d5be;
+  }
+
+  html[data-theme="dark"] {
+    --bg: #0e1117;
+    --surface: #181c26;
+    --border: #282e3e;
+    --text: #e2e8f4;
+    --text-muted: #7a8699;
+    --green: #2eab6f;
+    --green-light: #163324;
+    --shadow: 0 1px 6px rgba(0,0,0,0.5);
+    --c-grid: #252a38;
+    --c-grid-label: #3d4560;
+    --c-empty: #3a4055;
+    --c-label: #5a6880;
+    --c-val: #7a90b0;
+    --c-past-blue: #2a4070;
+    --c-past-green: #1a4a30;
   }
 
   body {
@@ -37,6 +59,7 @@
     min-height: 100vh;
     touch-action: manipulation;
     -webkit-text-size-adjust: 100%;
+    transition: background 0.2s, color 0.2s;
   }
 
   .container {
@@ -56,6 +79,7 @@
     padding: 4px;
     margin-bottom: 16px;
     box-shadow: var(--shadow);
+    transition: background 0.2s, border-color 0.2s;
   }
   .nav-tab {
     flex: 1;
@@ -80,34 +104,26 @@
   .nav-tab.active[data-view="podnikani"] { background: #2eab6f; color: #fff; font-weight: 600; }
   .nav-tab:not(.active):hover { background: var(--bg); }
 
-  /* ── Header ── */
-  .app-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
+  .theme-toggle {
+    width: 36px; height: 36px; border-radius: 7px; border: none; flex-shrink: 0;
+    background: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    color: var(--text-muted); transition: background 0.15s, color 0.15s;
+    -webkit-tap-highlight-color: transparent;
   }
+  .theme-toggle:hover { background: var(--bg); color: var(--text); }
+  .theme-toggle svg { pointer-events: none; }
+
+  /* ── Header ── */
+  .app-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
   .app-title { font-size: 20px; font-weight: 700; color: var(--text); margin-right: auto; }
 
   .year-select {
-    padding: 10px 14px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--surface);
-    color: var(--text);
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    outline: none;
-    min-height: 44px;
-    -webkit-appearance: none;
-    appearance: none;
+    padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--surface); color: var(--text); font-size: 16px; font-weight: 600;
+    cursor: pointer; outline: none; min-height: 44px; -webkit-appearance: none; appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7a90' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 10px center;
-    padding-right: 30px;
-    transition: border-color 0.15s;
+    background-repeat: no-repeat; background-position: right 10px center; padding-right: 30px;
+    transition: border-color 0.15s, background 0.2s;
   }
   #view-prijmy    .year-select:focus { border-color: #2d6be4; }
   #view-podnikani .year-select:focus { border-color: #2eab6f; }
@@ -124,11 +140,13 @@
   #view-podnikani .btn-primary { background: #2eab6f; color: #fff; border-color: #2eab6f; }
   .btn-danger { color: #c0392b; border-color: #e8b4b0; }
   .btn:disabled { opacity: 0.35; pointer-events: none; }
+  html[data-theme="dark"] .btn-danger { color: #e05a50; border-color: #5a2a28; }
 
   /* ── Card ── */
   .card {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 16px; overflow: hidden;
+    transition: background 0.2s, border-color 0.2s;
   }
 
   /* ── Desktop table ── */
@@ -157,6 +175,10 @@
   #view-podnikani tr.data-row:hover { background: #f0fbf6; }
   #view-prijmy    tr.data-row.active { background: #e8efff; }
   #view-podnikani tr.data-row.active { background: #e6f7f0; }
+  html[data-theme="dark"] #view-prijmy    tr.data-row:hover  { background: #1e2540; }
+  html[data-theme="dark"] #view-podnikani tr.data-row:hover  { background: #1a3028; }
+  html[data-theme="dark"] #view-prijmy    tr.data-row.active { background: #1a2248; }
+  html[data-theme="dark"] #view-podnikani tr.data-row.active { background: #163224; }
 
   .td-computed { padding: 4px 12px; color: var(--text-muted); font-size: 13px; }
   .td-total { font-weight: 700; color: var(--green); padding: 4px 12px; font-size: 13px; }
@@ -181,8 +203,10 @@
   input[type=number]::-webkit-inner-spin-button,
   input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
   input[type=number]:hover { border-color: var(--border); background: var(--bg); }
-  #view-prijmy    input[type=number]:focus { border-color: #2d6be4; background: #fff; box-shadow: 0 0 0 3px #e8efff; }
-  #view-podnikani input[type=number]:focus { border-color: #2eab6f; background: #fff; box-shadow: 0 0 0 3px #e6f7f0; }
+  #view-prijmy    input[type=number]:focus { border-color: #2d6be4; background: var(--surface); box-shadow: 0 0 0 3px #e8efff; }
+  #view-podnikani input[type=number]:focus { border-color: #2eab6f; background: var(--surface); box-shadow: 0 0 0 3px #e6f7f0; }
+  html[data-theme="dark"] #view-prijmy    input[type=number]:focus { box-shadow: 0 0 0 3px #1a2248; }
+  html[data-theme="dark"] #view-podnikani input[type=number]:focus { box-shadow: 0 0 0 3px #163224; }
 
   input[type=text] {
     width: 100%; padding: 7px 10px; border: 1px solid transparent;
@@ -191,7 +215,8 @@
     transition: border-color 0.15s, background 0.15s;
   }
   input[type=text]:hover { border-color: var(--border); background: var(--bg); }
-  input[type=text]:focus { border-color: #2eab6f; background: #fff; box-shadow: 0 0 0 3px #e6f7f0; }
+  input[type=text]:focus { border-color: #2eab6f; background: var(--surface); box-shadow: 0 0 0 3px #e6f7f0; }
+  html[data-theme="dark"] input[type=text]:focus { box-shadow: 0 0 0 3px #163224; }
 
   /* ── Mobile cards ── */
   .mobile-cards { display: none; }
@@ -204,6 +229,8 @@
   }
   #view-prijmy    .month-card.open .month-card-header { background: #e8efff; }
   #view-podnikani .month-card.open .month-card-header { background: #e6f7f0; }
+  html[data-theme="dark"] #view-prijmy    .month-card.open .month-card-header { background: #1a2248; }
+  html[data-theme="dark"] #view-podnikani .month-card.open .month-card-header { background: #163224; }
 
   .mc-name { font-weight: 600; font-size: 15px; flex: 1; }
   .mc-summary { font-size: 14px; font-weight: 700; text-align: right; min-width: 90px; }
@@ -225,8 +252,10 @@
     border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
   }
   .mc-field input[type=text] { font-size: 15px; text-align: left; }
-  #view-prijmy    .mc-field input:focus { border-color: #2d6be4; box-shadow: 0 0 0 3px #e8efff; background: #fff; }
-  #view-podnikani .mc-field input:focus { border-color: #2eab6f; box-shadow: 0 0 0 3px #e6f7f0; background: #fff; }
+  #view-prijmy    .mc-field input:focus { border-color: #2d6be4; box-shadow: 0 0 0 3px #e8efff; background: var(--surface); }
+  #view-podnikani .mc-field input:focus { border-color: #2eab6f; box-shadow: 0 0 0 3px #e6f7f0; background: var(--surface); }
+  html[data-theme="dark"] #view-prijmy    .mc-field input:focus { box-shadow: 0 0 0 3px #1a2248; }
+  html[data-theme="dark"] #view-podnikani .mc-field input:focus { box-shadow: 0 0 0 3px #163224; }
 
   .mc-divider { height: 1px; background: var(--border); margin: 2px 0; }
   .mc-computed-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 13px; }
@@ -256,13 +285,12 @@
 
   /* ── Year comparison ── */
   .comparison-section { padding: 16px; }
-  .comparison-row {
-    display: flex; align-items: center; gap: 10px; padding: 8px 0;
-    border-bottom: 1px solid var(--border); font-size: 13px;
-  }
+  .comparison-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
   .comparison-row:last-of-type { border-bottom: none; }
   #view-prijmy    .comparison-row.current-year { background: #e8efff; border-radius: 8px; padding: 8px 10px; margin: 0 -10px; }
   #view-podnikani .comparison-row.current-year { background: #e6f7f0; border-radius: 8px; padding: 8px 10px; margin: 0 -10px; }
+  html[data-theme="dark"] #view-prijmy    .comparison-row.current-year { background: #1a2248; }
+  html[data-theme="dark"] #view-podnikani .comparison-row.current-year { background: #163224; }
   .comp-year { font-weight: 700; width: 44px; color: var(--text); }
   #view-prijmy    .comp-total { width: 110px; font-weight: 600; color: #2d6be4; }
   #view-podnikani .comp-total { width: 110px; font-weight: 600; color: #2eab6f; }
@@ -270,17 +298,48 @@
   #view-prijmy    .comp-tag { font-size: 10px; background: #2d6be4; color: #fff; padding: 1px 6px; border-radius: 10px; white-space: nowrap; }
   #view-podnikani .comp-tag { font-size: 10px; background: #2eab6f; color: #fff; padding: 1px 6px; border-radius: 10px; white-space: nowrap; }
 
-  .celkem-vydelano {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 12px 0 0; margin-top: 8px; border-top: 2px solid var(--border);
-  }
+  .celkem-vydelano { display: flex; justify-content: space-between; align-items: center; padding: 12px 0 0; margin-top: 8px; border-top: 2px solid var(--border); }
   .cv-label { color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.04em; }
   .cv-value { color: #2eab6f; font-weight: 700; font-size: 18px; }
+
+  /* ── Goal card ── */
+  .goal-section { padding: 16px; }
+  .goal-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); display: block; margin-bottom: 14px; }
+  .goal-fields { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  .goal-field { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 180px; }
+  .goal-field label { font-size: 13px; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
+  .goal-field input[type=number],
+  .goal-field input[type=text] {
+    flex: 1; min-width: 0; padding: 9px 12px; border: 1px solid var(--border) !important;
+    border-radius: 8px; background: var(--bg) !important; color: var(--text);
+    font-size: 15px; outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+    text-align: left; width: auto;
+  }
+  .goal-field input[type=number] { text-align: right; }
+  .goal-field input:focus { border-color: #2eab6f !important; box-shadow: 0 0 0 3px #e6f7f0 !important; }
+  html[data-theme="dark"] .goal-field input:focus { box-shadow: 0 0 0 3px #163224 !important; }
+
+  .goal-progress-wrap { margin-top: 14px; }
+  .goal-bar-track { height: 10px; background: var(--border); border-radius: 999px; overflow: hidden; margin-bottom: 10px; }
+  .goal-bar-fill { height: 100%; background: #2eab6f; border-radius: 999px; width: 0%; transition: width 0.6s cubic-bezier(0.34,1.56,0.64,1), background 0.3s; }
+  .goal-bar-fill.over { background: #e8a020; }
+  .goal-stats { display: flex; flex-wrap: wrap; gap: 10px 20px; font-size: 13px; color: var(--text-muted); margin-bottom: 10px; }
+  .goal-pct { font-weight: 700; font-size: 16px; color: #2eab6f; }
+  .goal-pct.over { color: #e8a020; }
+  .goal-odmena-box {
+    padding: 10px 14px; border-radius: 8px; background: var(--bg);
+    border: 1px solid var(--border); font-size: 14px;
+    transition: background 0.3s, border-color 0.3s;
+  }
+  .goal-odmena-box.done { background: var(--green-light); border-color: #2eab6f; }
+  html[data-theme="dark"] .goal-odmena-box.done { background: #163324; border-color: #2eab6f; }
+  .goal-odmena-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin-bottom: 3px; }
+  .goal-odmena-text { font-weight: 600; color: var(--text); }
 
   /* ── Status bar ── */
   .statusbar {
     position: fixed; bottom: calc(18px + var(--safe-bottom)); left: 50%;
-    transform: translateX(-50%); background: var(--text); color: #fff;
+    transform: translateX(-50%); background: #1e2a3a; color: #fff;
     padding: 7px 18px; border-radius: 20px; font-size: 13px;
     opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 100; white-space: nowrap;
   }
@@ -288,14 +347,15 @@
 
   /* ── Dialog ── */
   .dialog-overlay {
-    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45);
     z-index: 200; align-items: flex-end; justify-content: center; padding-bottom: var(--safe-bottom);
   }
   .dialog-overlay.open { display: flex; }
   .dialog {
     background: var(--surface); border-radius: 16px 16px 0 0;
     padding: 24px 20px calc(20px + var(--safe-bottom)); width: 100%; max-width: 480px;
-    box-shadow: 0 -4px 32px rgba(0,0,0,0.15); animation: slideUp 0.2s ease;
+    box-shadow: 0 -4px 32px rgba(0,0,0,0.2); animation: slideUp 0.2s ease;
+    border: 1px solid var(--border);
   }
   @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
   .dialog h3 { font-size: 17px; margin-bottom: 8px; }
@@ -319,6 +379,8 @@
     .mobile-footer-card { display: flex; }
     .chart-section { padding: 12px; }
     svg.chart { height: 160px !important; }
+    .goal-fields { flex-direction: column; }
+    .goal-field { min-width: 0; }
   }
 
   @media (min-width: 601px) {
@@ -334,6 +396,17 @@
   <div class="nav-tabs">
     <button class="nav-tab active" data-view="prijmy">Příjmy</button>
     <button class="nav-tab" data-view="podnikani">Podnikání</button>
+    <button class="theme-toggle" id="themeToggle" title="Přepnout tmavý/světlý režim">
+      <svg id="iconSun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+        <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+      <svg id="iconMoon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </button>
   </div>
 
   <!-- ═══════════════ PŘÍJMY VIEW ═══════════════ -->
@@ -447,6 +520,33 @@
       </div>
     </div>
 
+    <!-- Goal card -->
+    <div class="card">
+      <div class="goal-section">
+        <span class="goal-title">Cíl roku <span id="b-goalYear"></span></span>
+        <div class="goal-fields">
+          <div class="goal-field">
+            <label>Cíl (Kč)</label>
+            <input type="number" id="b-goalAmount" inputmode="numeric" min="0" step="1000" placeholder="Zadej cíl…">
+          </div>
+          <div class="goal-field">
+            <label>Odměna</label>
+            <input type="text" id="b-goalOdmena" placeholder="Co si dáš za odměnu?">
+          </div>
+        </div>
+        <div class="goal-progress-wrap" id="b-goalProgressWrap" style="display:none">
+          <div class="goal-bar-track">
+            <div class="goal-bar-fill" id="b-goalBarFill"></div>
+          </div>
+          <div class="goal-stats" id="b-goalStats"></div>
+          <div class="goal-odmena-box" id="b-goalOdmenaBox" style="display:none">
+            <div class="goal-odmena-label" id="b-goalOdmenaLabel"></div>
+            <div class="goal-odmena-text" id="b-goalOdmenaText"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="card">
       <div class="chart-section">
         <div class="chart-label">Měsíční příjmy z podnikání</div>
@@ -470,7 +570,6 @@
 
 </div><!-- /container -->
 
-<!-- Shared dialog -->
 <div class="dialog-overlay" id="dialogOverlay">
   <div class="dialog">
     <h3 id="dialogTitle">Potvrzení</h3>
@@ -508,6 +607,43 @@ function niceStep(maxVal, ticks) {
   const norm = raw / mag;
   return (norm < 1.5 ? 1 : norm < 3 ? 2 : norm < 7 ? 5 : 10) * mag;
 }
+function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+/* ── Count-up animation ── */
+function countUp(el, endVal, duration = 650) {
+  if (endVal === 0) { el.textContent = fmt(0); return; }
+  const startTime = performance.now();
+  function step(now) {
+    const t = Math.min((now - startTime) / duration, 1);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = fmt(Math.round(endVal * eased));
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+/* ── Dark mode ── */
+function applyTheme(dark) {
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  document.getElementById('iconSun').style.display  = dark ? 'none' : '';
+  document.getElementById('iconMoon').style.display = dark ? '' : 'none';
+  document.getElementById('metaTheme').content = dark ? '#0e1117' : '#2d6be4';
+  localStorage.setItem('theme', dark ? 'dark' : 'light');
+}
+
+(function initTheme() {
+  const saved = localStorage.getItem('theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme(saved ? saved === 'dark' : prefersDark);
+})();
+
+document.getElementById('themeToggle').addEventListener('click', () => {
+  applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark');
+  setTimeout(() => {
+    if (activeView === 'prijmy') PRIJMY.scheduleCharts();
+    else PODNIKANI.scheduleCharts();
+  }, 50);
+});
 
 /* ── Shared status bar ── */
 let statusTimer = null;
@@ -547,7 +683,7 @@ let activeView = 'prijmy';
 document.querySelectorAll('.nav-tab').forEach(tab => {
   tab.addEventListener('click', () => {
     const view = tab.dataset.view;
-    if (view === activeView) return;
+    if (!view || view === activeView) return;
     activeView = view;
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
     document.getElementById('view-prijmy').style.display    = view === 'prijmy'    ? '' : 'none';
@@ -626,7 +762,7 @@ const PRIJMY = (() => {
     document.getElementById('p-btnDeleteYear').disabled = years.length <= 1;
   }
 
-  function renderTable() {
+  function renderTable(animate) {
     const tbody = document.getElementById('p-tableBody');
     tbody.innerHTML = '';
     let totalCelkem = 0, filledMonths = 0;
@@ -653,10 +789,10 @@ const PRIJMY = (() => {
       });
       tbody.appendChild(tr);
     });
-    updateFooter(totalCelkem, filledMonths);
+    updateFooter(totalCelkem, filledMonths, animate);
   }
 
-  function renderMobileCards() {
+  function renderMobileCards(animate) {
     const container = document.getElementById('p-mobileCards');
     container.innerHTML = '';
     let totalCelkem = 0, filledMonths = 0;
@@ -693,7 +829,7 @@ const PRIJMY = (() => {
       card.appendChild(header); card.appendChild(body);
       container.appendChild(card);
     });
-    updateFooter(totalCelkem, filledMonths);
+    updateFooter(totalCelkem, filledMonths, animate);
   }
 
   function onInputChange(month, field, rawValue) {
@@ -722,91 +858,90 @@ const PRIJMY = (() => {
     const yd = getYearData(currentYear);
     let total = 0, filled = 0;
     MESICE_KEYS.forEach(mk => { const md = yd[mk]||{}; const s = (md.prace||0)+(md.stravne||0)+(md.podnikani||0); total += s; if (s>0) filled++; });
-    updateFooter(total, filled);
+    updateFooter(total, filled, false);
   }
 
-  function updateFooter(total, filledMonths) {
+  function updateFooter(total, filledMonths, animate) {
     const avg = filledMonths > 0 ? total / filledMonths : 0;
-    document.getElementById('p-footTotal').textContent  = fmt(total);
-    document.getElementById('p-footAvg').textContent    = fmt(avg);
-    document.getElementById('p-mFootTotal').textContent = fmt(total);
-    document.getElementById('p-mFootAvg').textContent   = fmt(avg);
+    if (animate) {
+      countUp(document.getElementById('p-footTotal'),  total);
+      countUp(document.getElementById('p-mFootTotal'), total);
+    } else {
+      document.getElementById('p-footTotal').textContent  = fmt(total);
+      document.getElementById('p-mFootTotal').textContent = fmt(total);
+    }
+    document.getElementById('p-footAvg').textContent   = fmt(avg);
+    document.getElementById('p-mFootAvg').textContent  = fmt(avg);
   }
 
   function getYearTotal(y) {
-    const yd = getYearData(y);
-    let t = 0;
+    const yd = getYearData(y); let t = 0;
     MESICE_KEYS.forEach(mk => { const md = yd[mk]||{}; t += (md.prace||0)+(md.stravne||0)+(md.podnikani||0); });
     return t;
   }
 
   function getYearFilledMonths(y) {
-    const yd = getYearData(y);
-    let filled = 0;
+    const yd = getYearData(y); let filled = 0;
     MESICE_KEYS.forEach(mk => { const md = yd[mk]||{}; if ((md.prace||0)+(md.stravne||0)+(md.podnikani||0)>0) filled++; });
     return filled;
   }
 
-  function renderChart1() {
-    const svg = document.getElementById('p-chart1');
-    svg.innerHTML = '';
-    const yd = getYearData(currentYear);
-    const values = MESICE_KEYS.map(mk => { const md = yd[mk]||{}; return (md.prace||0)+(md.stravne||0)+(md.podnikani||0); });
-    drawBarChart(svg, values, Math.max(...values, 1), '#2d6be4');
-  }
-
-  function renderChart2() {
-    const svg = document.getElementById('p-chart2');
-    svg.innerHTML = '';
-    const yd = getYearData(currentYear);
-    const valA = MESICE_KEYS.map(mk => { const md = yd[mk]||{}; return (md.prace||0)+(md.stravne||0); });
-    const valB = MESICE_KEYS.map(mk => { const md = yd[mk]||{}; return md.podnikani||0; });
-    drawStackedBarChart(svg, valA, valB, Math.max(...valA.map((a,i)=>a+valB[i]),1));
-  }
-
   function drawBarChart(svg, values, maxVal, color) {
     const mobile = isMobile();
-    const H = mobile ? 160 : 200, PAD_TOP = mobile?18:24, PAD_BTM = mobile?24:30, PAD_L=8, PAD_R=8;
-    const W = getChartWidth(svg), plotH = H-PAD_TOP-PAD_BTM;
-    const gap = (W-PAD_L-PAD_R)/values.length, barW = Math.max(6, gap*0.6);
-    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-    const gridStep = niceStep(maxVal, mobile?3:5);
-    for (let v=gridStep; v<=maxVal*1.05; v+=gridStep) {
-      const y = PAD_TOP+plotH-(v/maxVal)*plotH;
-      if (y<PAD_TOP) break;
-      svg.appendChild(svgEl('line',{x1:PAD_L,y1:y,x2:W-PAD_R,y2:y,stroke:'#e4e8f0','stroke-width':1}));
-      if (!mobile) svg.appendChild(svgEl('text',{x:PAD_L,y:y-3,'font-size':'9',fill:'#9aaabf','text-anchor':'start'})).textContent=fmtNum(v);
+    const H = mobile?160:200, PT=mobile?18:24, PB=mobile?24:30, PL=8, PR=8;
+    const W = getChartWidth(svg), pH = H-PT-PB;
+    const gap = (W-PL-PR)/values.length, bW = Math.max(6,gap*0.6);
+    svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+    const gs = niceStep(maxVal,mobile?3:5);
+    for (let v=gs; v<=maxVal*1.05; v+=gs) {
+      const y=PT+pH-(v/maxVal)*pH; if(y<PT) break;
+      svg.appendChild(svgEl('line',{x1:PL,y1:y,x2:W-PR,y2:y,stroke:cssVar('--c-grid'),'stroke-width':1}));
+      if (!mobile) svg.appendChild(svgEl('text',{x:PL,y:y-3,'font-size':'9',fill:cssVar('--c-grid-label'),'text-anchor':'start'})).textContent=fmtNum(v);
     }
     values.forEach((val,i) => {
-      const cx = PAD_L+i*gap+gap/2;
-      svg.appendChild(svgEl('text',{x:cx,y:PAD_TOP+plotH+(mobile?14:16),'text-anchor':'middle','font-size':mobile?'9':'10',fill:val===0?'#ccd3de':'#6b7a90'})).textContent=MESICE_SHORT[i];
+      const cx=PL+i*gap+gap/2;
+      svg.appendChild(svgEl('text',{x:cx,y:PT+pH+(mobile?14:16),'text-anchor':'middle','font-size':mobile?'9':'10',fill:val===0?cssVar('--c-empty'):cssVar('--c-label')})).textContent=MESICE_SHORT[i];
       if (val===0) return;
-      const bh=Math.max(2,(val/maxVal)*plotH), x=PAD_L+i*gap+(gap-barW)/2, y=PAD_TOP+plotH-bh;
-      svg.appendChild(svgEl('rect',{x,y,width:barW,height:bh,fill:color,rx:2}));
-      if (!mobile) svg.appendChild(svgEl('text',{x:x+barW/2,y:y-3,'text-anchor':'middle','font-size':'9',fill:'#4a6080','font-weight':'600'})).textContent=fmtNum(val);
+      const bh=Math.max(2,(val/maxVal)*pH), x=PL+i*gap+(gap-bW)/2, y=PT+pH-bh;
+      svg.appendChild(svgEl('rect',{x,y,width:bW,height:bh,fill:color,rx:2}));
+      if (!mobile) svg.appendChild(svgEl('text',{x:x+bW/2,y:y-3,'text-anchor':'middle','font-size':'9',fill:cssVar('--c-val'),'font-weight':'600'})).textContent=fmtNum(val);
     });
   }
 
   function drawStackedBarChart(svg, valA, valB, maxVal) {
     const mobile = isMobile();
-    const H=mobile?160:200, PAD_TOP=mobile?14:20, PAD_BTM=mobile?24:30, PAD_L=8, PAD_R=8;
-    const W=getChartWidth(svg), plotH=H-PAD_TOP-PAD_BTM;
-    const gap=(W-PAD_L-PAD_R)/valA.length, barW=Math.max(6,gap*0.6);
+    const H=mobile?160:200, PT=mobile?14:20, PB=mobile?24:30, PL=8, PR=8;
+    const W=getChartWidth(svg), pH=H-PT-PB;
+    const gap=(W-PL-PR)/valA.length, bW=Math.max(6,gap*0.6);
     svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
-    const gridStep=niceStep(maxVal,mobile?3:5);
-    for (let v=gridStep; v<=maxVal*1.05; v+=gridStep) {
-      const y=PAD_TOP+plotH-(v/maxVal)*plotH;
-      if (y<PAD_TOP) break;
-      svg.appendChild(svgEl('line',{x1:PAD_L,y1:y,x2:W-PAD_R,y2:y,stroke:'#e4e8f0','stroke-width':1}));
+    const gs=niceStep(maxVal,mobile?3:5);
+    for (let v=gs; v<=maxVal*1.05; v+=gs) {
+      const y=PT+pH-(v/maxVal)*pH; if(y<PT) break;
+      svg.appendChild(svgEl('line',{x1:PL,y1:y,x2:W-PR,y2:y,stroke:cssVar('--c-grid'),'stroke-width':1}));
     }
     valA.forEach((a,i) => {
-      const b=valB[i], cx=PAD_L+i*gap+gap/2;
-      svg.appendChild(svgEl('text',{x:cx,y:PAD_TOP+plotH+(mobile?14:16),'text-anchor':'middle','font-size':mobile?'9':'10',fill:(a+b)===0?'#ccd3de':'#6b7a90'})).textContent=MESICE_SHORT[i];
+      const b=valB[i], cx=PL+i*gap+gap/2;
+      svg.appendChild(svgEl('text',{x:cx,y:PT+pH+(mobile?14:16),'text-anchor':'middle','font-size':mobile?'9':'10',fill:(a+b)===0?cssVar('--c-empty'):cssVar('--c-label')})).textContent=MESICE_SHORT[i];
       if (a+b===0) return;
-      const x=PAD_L+i*gap+(gap-barW)/2, bhA=(a/maxVal)*plotH, bhB=(b/maxVal)*plotH, yA=PAD_TOP+plotH-bhA, yB=yA-bhB;
-      if (bhA>0) svg.appendChild(svgEl('rect',{x,y:yA,width:barW,height:Math.max(1,bhA),fill:'#2d6be4',rx:2}));
-      if (bhB>0) svg.appendChild(svgEl('rect',{x,y:yB,width:barW,height:Math.max(1,bhB),fill:'#2eab6f',rx:b>0?2:0}));
+      const x=PL+i*gap+(gap-bW)/2, bhA=(a/maxVal)*pH, bhB=(b/maxVal)*pH, yA=PT+pH-bhA, yB=yA-bhB;
+      if (bhA>0) svg.appendChild(svgEl('rect',{x,y:yA,width:bW,height:Math.max(1,bhA),fill:'#2d6be4',rx:2}));
+      if (bhB>0) svg.appendChild(svgEl('rect',{x,y:yB,width:bW,height:Math.max(1,bhB),fill:'#2eab6f',rx:b>0?2:0}));
     });
+  }
+
+  function renderChart1() {
+    const svg = document.getElementById('p-chart1'); svg.innerHTML = '';
+    const yd = getYearData(currentYear);
+    const values = MESICE_KEYS.map(mk => { const md=yd[mk]||{}; return (md.prace||0)+(md.stravne||0)+(md.podnikani||0); });
+    drawBarChart(svg, values, Math.max(...values,1), '#2d6be4');
+  }
+
+  function renderChart2() {
+    const svg = document.getElementById('p-chart2'); svg.innerHTML = '';
+    const yd = getYearData(currentYear);
+    const valA = MESICE_KEYS.map(mk => { const md=yd[mk]||{}; return (md.prace||0)+(md.stravne||0); });
+    const valB = MESICE_KEYS.map(mk => { const md=yd[mk]||{}; return md.podnikani||0; });
+    drawStackedBarChart(svg, valA, valB, Math.max(...valA.map((a,i)=>a+valB[i]),1));
   }
 
   function renderComparison() {
@@ -814,9 +949,9 @@ const PRIJMY = (() => {
     const cont = document.getElementById('p-compRows');
     cont.innerHTML = '';
     const totals = years.map(y => getYearTotal(y));
-    const maxT = Math.max(...totals, 1);
+    const maxT = Math.max(...totals,1);
     years.forEach((y,i) => {
-      const total = totals[i], filled = getYearFilledMonths(y), avg = filled>0?total/filled:0;
+      const total=totals[i], filled=getYearFilledMonths(y), avg=filled>0?total/filled:0;
       const div = document.createElement('div');
       div.className = 'comparison-row'+(y===currentYear?' current-year':'');
       div.innerHTML = `<span class="comp-year">${y}</span><span class="comp-total">${fmt(total)}</span><span class="comp-avg">průměr ${fmt(avg)}/měs</span>${y===currentYear?'<span class="comp-tag">aktuální</span>':''}`;
@@ -824,13 +959,13 @@ const PRIJMY = (() => {
     });
     const svg = document.getElementById('p-chart3');
     svg.innerHTML = '';
-    const W=getChartWidth(svg), barH=14, gap=22, totalH=years.length*gap+10;
-    svg.setAttribute('viewBox',`0 0 ${W} ${totalH}`);
-    svg.setAttribute('height',totalH);
+    const W=getChartWidth(svg), bH=14, g=22, tH=years.length*g+10;
+    svg.setAttribute('viewBox',`0 0 ${W} ${tH}`);
+    svg.setAttribute('height',tH);
     years.forEach((y,i) => {
-      const bw=(totals[i]/maxT)*(W-100), by=i*gap+4;
-      svg.appendChild(svgEl('rect',{x:0,y:by,width:Math.max(2,bw),height:barH,fill:y===currentYear?'#2d6be4':'#b0c2e0',rx:3}));
-      svg.appendChild(svgEl('text',{x:Math.max(2,bw)+6,y:by+barH-2,'font-size':'11',fill:'#4a6080','font-weight':'600'})).textContent=`${y}: ${fmt(totals[i])}`;
+      const bw=(totals[i]/maxT)*(W-100), by=i*g+4;
+      svg.appendChild(svgEl('rect',{x:0,y:by,width:Math.max(2,bw),height:bH,fill:y===currentYear?'#2d6be4':cssVar('--c-past-blue'),rx:3}));
+      svg.appendChild(svgEl('text',{x:Math.max(2,bw)+6,y:by+bH-2,'font-size':'11',fill:cssVar('--c-val'),'font-weight':'600'})).textContent=`${y}: ${fmt(totals[i])}`;
     });
   }
 
@@ -839,34 +974,34 @@ const PRIJMY = (() => {
 
   function setupEvents() {
     document.getElementById('p-yearSelect').addEventListener('change', e => {
-      currentYear = e.target.value; data.currentYear = currentYear; saveData();
-      renderTable(); renderMobileCards(); renderYearSelect(); scheduleCharts();
+      currentYear=e.target.value; data.currentYear=currentYear; saveData();
+      renderTable(true); renderMobileCards(true); renderYearSelect(); scheduleCharts();
     });
     document.getElementById('p-btnNewYear').addEventListener('click', () => {
-      const years = Object.keys(data.years).map(Number).sort((a,b)=>a-b);
-      const suggested = years[years.length-1]+1;
-      const input = window.prompt(`Přidat nový rok (navrhovaný: ${suggested}):`, suggested);
+      const years=Object.keys(data.years).map(Number).sort((a,b)=>a-b);
+      const suggested=years[years.length-1]+1;
+      const input=window.prompt(`Přidat nový rok (navrhovaný: ${suggested}):`,suggested);
       if (input===null) return;
-      const y = parseInt(input,10);
+      const y=parseInt(input,10);
       if (isNaN(y)||y<1900||y>2100) { alert('Neplatný rok.'); return; }
-      const ys = String(y);
+      const ys=String(y);
       if (data.years[ys]) { alert(`Rok ${ys} již existuje.`); return; }
-      data.years[ys] = emptyYear(); currentYear = ys; data.currentYear = currentYear; saveData();
-      renderYearSelect(); renderTable(); renderMobileCards(); scheduleCharts();
+      data.years[ys]=emptyYear(); currentYear=ys; data.currentYear=currentYear; saveData();
+      renderYearSelect(); renderTable(true); renderMobileCards(true); scheduleCharts();
     });
     document.getElementById('p-btnDeleteYear').addEventListener('click', () => {
       if (Object.keys(data.years).length<=1) return;
-      showDialog(`Smazat rok ${currentYear}?`, `Opravdu chcete smazat rok ${currentYear}? Tato akce je nevratná.`, () => {
+      showDialog(`Smazat rok ${currentYear}?`,`Opravdu chcete smazat rok ${currentYear}? Tato akce je nevratná.`,()=>{
         delete data.years[currentYear];
-        const remaining = Object.keys(data.years).sort();
-        currentYear = remaining[remaining.length-1]; data.currentYear = currentYear; saveData();
-        renderYearSelect(); renderTable(); renderMobileCards(); scheduleCharts();
+        const remaining=Object.keys(data.years).sort();
+        currentYear=remaining[remaining.length-1]; data.currentYear=currentYear; saveData();
+        renderYearSelect(); renderTable(true); renderMobileCards(true); scheduleCharts();
       });
     });
   }
 
   function init() {
-    initData(); renderYearSelect(); renderTable(); renderMobileCards(); setupEvents(); scheduleCharts();
+    initData(); renderYearSelect(); renderTable(true); renderMobileCards(true); setupEvents(); scheduleCharts();
   }
 
   return { init, scheduleCharts };
@@ -881,6 +1016,7 @@ const PODNIKANI = (() => {
 
   const SEED = {
     currentYear: '2026',
+    goals: {},
     years: {
       '2024': {
         leden:{faktury:'',zisk:0}, unor:{faktury:'',zisk:0}, brezen:{faktury:'',zisk:0},
@@ -919,8 +1055,8 @@ const PODNIKANI = (() => {
 
   function initData() {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) { try { data=JSON.parse(raw); currentYear=String(data.currentYear||new Date().getFullYear()); return; } catch(e){} }
-    data = JSON.parse(JSON.stringify(SEED)); currentYear = data.currentYear; saveData();
+    if (raw) { try { data=JSON.parse(raw); currentYear=String(data.currentYear||new Date().getFullYear()); if (!data.goals) data.goals={}; return; } catch(e){} }
+    data = JSON.parse(JSON.stringify(SEED)); currentYear=data.currentYear; saveData();
   }
 
   function saveData() { data.currentYear=currentYear; localStorage.setItem(STORAGE_KEY,JSON.stringify(data)); showStatus(); }
@@ -928,86 +1064,87 @@ const PODNIKANI = (() => {
 
   function getYearData(y) { if (!data.years[y]) data.years[y]=emptyYear(); return data.years[y]; }
   function getMonthData(y,m) { const yd=getYearData(y); if (!yd[m]) yd[m]={faktury:'',zisk:0}; return yd[m]; }
+  function getGoal(y) { if (!data.goals) data.goals={}; return data.goals[y]||{amount:0,odmena:''}; }
 
   function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
   function renderYearSelect() {
-    const sel = document.getElementById('b-yearSelect');
-    const years = Object.keys(data.years).sort();
-    sel.innerHTML = '';
-    years.forEach(y => { const o=document.createElement('option'); o.value=y; o.textContent=y; if(y===currentYear) o.selected=true; sel.appendChild(o); });
-    document.getElementById('b-btnDeleteYear').disabled = years.length<=1;
+    const sel=document.getElementById('b-yearSelect');
+    const years=Object.keys(data.years).sort();
+    sel.innerHTML='';
+    years.forEach(y=>{ const o=document.createElement('option'); o.value=y; o.textContent=y; if(y===currentYear) o.selected=true; sel.appendChild(o); });
+    document.getElementById('b-btnDeleteYear').disabled=years.length<=1;
   }
 
-  function renderTable() {
-    const tbody = document.getElementById('b-tableBody');
-    tbody.innerHTML = '';
+  function renderTable(animate) {
+    const tbody=document.getElementById('b-tableBody');
+    tbody.innerHTML='';
     let totalZisk=0, filledMonths=0;
-    MESICE_KEYS.forEach((mk,i) => {
-      const md = getMonthData(currentYear,mk);
-      totalZisk += md.zisk;
+    MESICE_KEYS.forEach((mk,i)=>{
+      const md=getMonthData(currentYear,mk);
+      totalZisk+=md.zisk;
       if (md.zisk>0) filledMonths++;
-      const tr = document.createElement('tr');
-      tr.className = 'data-row';
-      tr.innerHTML = `
+      const tr=document.createElement('tr');
+      tr.className='data-row';
+      tr.innerHTML=`
         <td>${MESICE_LABELS[i]}</td>
         <td class="td-faktury"><input type="text" value="${escHtml(md.faktury||'')}" data-field="faktury" data-month="${mk}" placeholder="Popis faktur…"></td>
         <td><input type="number" inputmode="numeric" min="0" step="1" value="${md.zisk||''}" data-field="zisk" data-month="${mk}" placeholder="0"></td>
       `;
-      tr.querySelectorAll('input').forEach(inp => {
-        inp.addEventListener('focus', ()=>{ if(inp.type==='number') inp.select(); tr.classList.add('active'); });
-        inp.addEventListener('blur', ()=>tr.classList.remove('active'));
-        inp.addEventListener('input', ()=>onInputChange(inp.dataset.month,inp.dataset.field,inp.value));
+      tr.querySelectorAll('input').forEach(inp=>{
+        inp.addEventListener('focus',()=>{ if(inp.type==='number') inp.select(); tr.classList.add('active'); });
+        inp.addEventListener('blur',()=>tr.classList.remove('active'));
+        inp.addEventListener('input',()=>onInputChange(inp.dataset.month,inp.dataset.field,inp.value));
       });
       tbody.appendChild(tr);
     });
-    updateFooter(totalZisk, filledMonths);
+    updateFooter(totalZisk,filledMonths,animate);
   }
 
-  function renderMobileCards() {
-    const container = document.getElementById('b-mobileCards');
-    container.innerHTML = '';
+  function renderMobileCards(animate) {
+    const container=document.getElementById('b-mobileCards');
+    container.innerHTML='';
     let totalZisk=0, filledMonths=0;
-    MESICE_KEYS.forEach((mk,i) => {
-      const md = getMonthData(currentYear,mk);
-      totalZisk += md.zisk;
+    MESICE_KEYS.forEach((mk,i)=>{
+      const md=getMonthData(currentYear,mk);
+      totalZisk+=md.zisk;
       if (md.zisk>0) filledMonths++;
-      const card = document.createElement('div');
-      card.className = 'month-card';
-      const header = document.createElement('div');
-      header.className = 'month-card-header';
-      header.innerHTML = `
+      const card=document.createElement('div');
+      card.className='month-card';
+      const header=document.createElement('div');
+      header.className='month-card-header';
+      header.innerHTML=`
         <span class="mc-name">${MESICE_LABELS[i]}</span>
         <span class="mc-summary ${md.zisk===0?'zero':''}" id="b-mc-sum-${mk}">${md.zisk>0?fmt(md.zisk):'—'}</span>
         <span class="mc-chevron">▼</span>
       `;
-      const body = document.createElement('div');
-      body.className = 'month-card-body';
-      body.innerHTML = `
+      const body=document.createElement('div');
+      body.className='month-card-body';
+      body.innerHTML=`
         <div class="mc-field"><label>Faktury</label><input type="text" value="${escHtml(md.faktury||'')}" data-field="faktury" data-month="${mk}" placeholder="Popis faktur…"></div>
         <div class="mc-field"><label>Zisk</label><input type="number" inputmode="numeric" min="0" step="1" value="${md.zisk||''}" data-field="zisk" data-month="${mk}" placeholder="0"></div>
       `;
-      body.querySelectorAll('input').forEach(inp => {
-        inp.addEventListener('focus', ()=>{ if(inp.type==='number') inp.select(); });
-        inp.addEventListener('input', ()=>onInputChange(inp.dataset.month,inp.dataset.field,inp.value));
+      body.querySelectorAll('input').forEach(inp=>{
+        inp.addEventListener('focus',()=>{ if(inp.type==='number') inp.select(); });
+        inp.addEventListener('input',()=>onInputChange(inp.dataset.month,inp.dataset.field,inp.value));
       });
-      header.addEventListener('click', ()=>card.classList.toggle('open'));
+      header.addEventListener('click',()=>card.classList.toggle('open'));
       card.appendChild(header); card.appendChild(body);
       container.appendChild(card);
     });
-    updateFooter(totalZisk, filledMonths);
+    updateFooter(totalZisk,filledMonths,animate);
   }
 
-  function onInputChange(month, field, rawValue) {
-    const md = getMonthData(currentYear, month);
+  function onInputChange(month,field,rawValue) {
+    const md=getMonthData(currentYear,month);
     if (field==='zisk') {
       let val=parseInt(rawValue,10); if(isNaN(val)||val<0) val=0;
-      md.zisk = val;
-      const mcSum = document.getElementById(`b-mc-sum-${month}`);
+      md.zisk=val;
+      const mcSum=document.getElementById(`b-mc-sum-${month}`);
       if (mcSum) { mcSum.textContent=val>0?fmt(val):'—'; mcSum.className=`mc-summary ${val===0?'zero':''}`; }
       recalcFooter(); scheduleCharts();
     } else {
-      md.faktury = rawValue;
+      md.faktury=rawValue;
     }
     scheduleSave();
   }
@@ -1015,15 +1152,21 @@ const PODNIKANI = (() => {
   function recalcFooter() {
     const yd=getYearData(currentYear); let total=0,filled=0;
     MESICE_KEYS.forEach(mk=>{ const z=(yd[mk]||{}).zisk||0; total+=z; if(z>0) filled++; });
-    updateFooter(total,filled);
+    updateFooter(total,filled,false);
+    updateGoalProgress();
   }
 
-  function updateFooter(total, filledMonths) {
-    const avg = filledMonths>0?total/filledMonths:0;
-    document.getElementById('b-footTotal').textContent  = fmt(total);
-    document.getElementById('b-footAvg').textContent    = fmt(avg);
-    document.getElementById('b-mFootTotal').textContent = fmt(total);
-    document.getElementById('b-mFootAvg').textContent   = fmt(avg);
+  function updateFooter(total,filledMonths,animate) {
+    const avg=filledMonths>0?total/filledMonths:0;
+    if (animate) {
+      countUp(document.getElementById('b-footTotal'),  total);
+      countUp(document.getElementById('b-mFootTotal'), total);
+    } else {
+      document.getElementById('b-footTotal').textContent  = fmt(total);
+      document.getElementById('b-mFootTotal').textContent = fmt(total);
+    }
+    document.getElementById('b-footAvg').textContent  = fmt(avg);
+    document.getElementById('b-mFootAvg').textContent = fmt(avg);
   }
 
   function getYearTotal(y) {
@@ -1032,48 +1175,111 @@ const PODNIKANI = (() => {
     return t;
   }
 
+  /* ── Goal card ── */
+  function renderGoalCard() {
+    document.getElementById('b-goalYear').textContent = currentYear;
+    const goal = getGoal(currentYear);
+    document.getElementById('b-goalAmount').value = goal.amount || '';
+    document.getElementById('b-goalOdmena').value = goal.odmena || '';
+    updateGoalProgress();
+  }
+
+  function updateGoalProgress() {
+    const goal = getGoal(currentYear);
+    const total = getYearTotal(currentYear);
+    const wrap = document.getElementById('b-goalProgressWrap');
+
+    if (!goal.amount || goal.amount <= 0) {
+      wrap.style.display = 'none';
+      return;
+    }
+    wrap.style.display = '';
+
+    const realPct = total / goal.amount * 100;
+    const barPct  = Math.min(realPct, 100);
+    const over    = total >= goal.amount;
+
+    const fill = document.getElementById('b-goalBarFill');
+    fill.style.width = barPct + '%';
+    fill.classList.toggle('over', over);
+
+    const stats = document.getElementById('b-goalStats');
+    const remaining = goal.amount - total;
+    stats.innerHTML = `
+      <span class="goal-pct${over?' over':''}">${Math.round(realPct)} %</span>
+      <span>${fmt(total)} z ${fmt(goal.amount)}</span>
+      <span>${over ? 'Překročeno o: <strong>'+fmt(-remaining)+'</strong>' : 'Zbývá: <strong>'+fmt(remaining)+'</strong>'}</span>
+    `;
+
+    const odmenaBox   = document.getElementById('b-goalOdmenaBox');
+    const odmenaLabel = document.getElementById('b-goalOdmenaLabel');
+    const odmenaText  = document.getElementById('b-goalOdmenaText');
+    if (goal.odmena) {
+      odmenaBox.style.display = '';
+      odmenaBox.classList.toggle('done', over);
+      odmenaLabel.textContent = over ? 'Odměna splněna' : 'Odměna po splnění cíle';
+      odmenaText.textContent  = goal.odmena;
+    } else {
+      odmenaBox.style.display = 'none';
+    }
+  }
+
+  function setupGoalEvents() {
+    let goalTimer = null;
+    function onGoalChange() {
+      if (!data.goals) data.goals = {};
+      const amount  = parseInt(document.getElementById('b-goalAmount').value, 10) || 0;
+      const odmena  = document.getElementById('b-goalOdmena').value;
+      data.goals[currentYear] = { amount, odmena };
+      updateGoalProgress();
+      clearTimeout(goalTimer);
+      goalTimer = setTimeout(saveData, 300);
+    }
+    document.getElementById('b-goalAmount').addEventListener('input', onGoalChange);
+    document.getElementById('b-goalOdmena').addEventListener('input', onGoalChange);
+  }
+
   function getMonthsForAverage(y) {
     try {
-      const prijmyRaw = localStorage.getItem('prijmy_app_data');
+      const prijmyRaw=localStorage.getItem('prijmy_app_data');
       if (prijmyRaw) {
-        const prijmyData = JSON.parse(prijmyRaw);
-        const yearData = prijmyData.years && prijmyData.years[y];
-        if (yearData) {
+        const pd=JSON.parse(prijmyRaw);
+        const yd=pd.years&&pd.years[y];
+        if (yd) {
           let count=0;
-          MESICE_KEYS.forEach(mk => { const md=yearData[mk]||{}; if((md.prace||0)+(md.stravne||0)+(md.podnikani||0)>0) count++; });
+          MESICE_KEYS.forEach(mk=>{ const md=yd[mk]||{}; if((md.prace||0)+(md.stravne||0)+(md.podnikani||0)>0) count++; });
           return Math.max(count,1);
         }
       }
-    } catch(e) {}
-    const yd=getYearData(y); let firstMonth=-1,lastMonth=-1;
-    MESICE_KEYS.forEach((mk,i)=>{ if((yd[mk]||{}).zisk>0){ if(firstMonth===-1) firstMonth=i; lastMonth=i; } });
-    if (firstMonth===-1) return 1;
-    return lastMonth-firstMonth+1;
+    } catch(e){}
+    const yd=getYearData(y); let first=-1,last=-1;
+    MESICE_KEYS.forEach((mk,i)=>{ if((yd[mk]||{}).zisk>0){ if(first===-1) first=i; last=i; } });
+    if (first===-1) return 1;
+    return last-first+1;
   }
 
   function renderChart1() {
-    const svg=document.getElementById('b-chart1');
-    svg.innerHTML='';
+    const svg=document.getElementById('b-chart1'); svg.innerHTML='';
     const yd=getYearData(currentYear);
     const values=MESICE_KEYS.map(mk=>(yd[mk]||{}).zisk||0);
     const maxVal=Math.max(...values,1);
-    const mobile=isMobile(), H=mobile?160:200, PAD_TOP=mobile?18:24, PAD_BTM=mobile?24:30, PAD_L=8, PAD_R=8;
-    const W=getChartWidth(svg), plotH=H-PAD_TOP-PAD_BTM;
-    const gap=(W-PAD_L-PAD_R)/values.length, barW=Math.max(6,gap*0.6);
+    const mobile=isMobile(), H=mobile?160:200, PT=mobile?18:24, PB=mobile?24:30, PL=8, PR=8;
+    const W=getChartWidth(svg), pH=H-PT-PB;
+    const gap=(W-PL-PR)/values.length, bW=Math.max(6,gap*0.6);
     svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
-    const gridStep=niceStep(maxVal,mobile?3:5);
-    for (let v=gridStep; v<=maxVal*1.05; v+=gridStep) {
-      const y=PAD_TOP+plotH-(v/maxVal)*plotH; if(y<PAD_TOP) break;
-      svg.appendChild(svgEl('line',{x1:PAD_L,y1:y,x2:W-PAD_R,y2:y,stroke:'#e4e8f0','stroke-width':1}));
-      if (!mobile) svg.appendChild(svgEl('text',{x:PAD_L,y:y-3,'font-size':'9',fill:'#9aaabf','text-anchor':'start'})).textContent=fmtNum(v);
+    const gs=niceStep(maxVal,mobile?3:5);
+    for (let v=gs; v<=maxVal*1.05; v+=gs) {
+      const y=PT+pH-(v/maxVal)*pH; if(y<PT) break;
+      svg.appendChild(svgEl('line',{x1:PL,y1:y,x2:W-PR,y2:y,stroke:cssVar('--c-grid'),'stroke-width':1}));
+      if (!mobile) svg.appendChild(svgEl('text',{x:PL,y:y-3,'font-size':'9',fill:cssVar('--c-grid-label'),'text-anchor':'start'})).textContent=fmtNum(v);
     }
-    values.forEach((val,i) => {
-      const cx=PAD_L+i*gap+gap/2;
-      svg.appendChild(svgEl('text',{x:cx,y:PAD_TOP+plotH+(mobile?14:16),'text-anchor':'middle','font-size':mobile?'9':'10',fill:val===0?'#ccd3de':'#6b7a90'})).textContent=MESICE_SHORT[i];
+    values.forEach((val,i)=>{
+      const cx=PL+i*gap+gap/2;
+      svg.appendChild(svgEl('text',{x:cx,y:PT+pH+(mobile?14:16),'text-anchor':'middle','font-size':mobile?'9':'10',fill:val===0?cssVar('--c-empty'):cssVar('--c-label')})).textContent=MESICE_SHORT[i];
       if (val===0) return;
-      const bh=Math.max(2,(val/maxVal)*plotH), x=PAD_L+i*gap+(gap-barW)/2, y=PAD_TOP+plotH-bh;
-      svg.appendChild(svgEl('rect',{x,y,width:barW,height:bh,fill:'#2eab6f',rx:2}));
-      if (!mobile) svg.appendChild(svgEl('text',{x:x+barW/2,y:y-3,'text-anchor':'middle','font-size':'9',fill:'#4a6080','font-weight':'600'})).textContent=fmtNum(val);
+      const bh=Math.max(2,(val/maxVal)*pH), x=PL+i*gap+(gap-bW)/2, y=PT+pH-bh;
+      svg.appendChild(svgEl('rect',{x,y,width:bW,height:bh,fill:'#2eab6f',rx:2}));
+      if (!mobile) svg.appendChild(svgEl('text',{x:x+bW/2,y:y-3,'text-anchor':'middle','font-size':'9',fill:cssVar('--c-val'),'font-weight':'600'})).textContent=fmtNum(val);
     });
   }
 
@@ -1084,7 +1290,7 @@ const PODNIKANI = (() => {
     const totals=years.map(y=>getYearTotal(y));
     const maxT=Math.max(...totals,1);
     let grandTotal=0;
-    years.forEach((y,i) => {
+    years.forEach((y,i)=>{
       const total=totals[i]; grandTotal+=total;
       const filled=getMonthsForAverage(y), avg=filled>0?total/filled:0;
       const div=document.createElement('div');
@@ -1092,16 +1298,15 @@ const PODNIKANI = (() => {
       div.innerHTML=`<span class="comp-year">${y}</span><span class="comp-total">${fmt(total)}</span><span class="comp-avg">průměr ${fmt(avg)}/měs</span>${y===currentYear?'<span class="comp-tag">aktuální</span>':''}`;
       cont.appendChild(div);
     });
-    document.getElementById('b-celkemVydelano').textContent=fmt(grandTotal);
-    const svg=document.getElementById('b-chart2');
-    svg.innerHTML='';
-    const W=getChartWidth(svg), barH=14, gap=22, totalH=years.length*gap+10;
-    svg.setAttribute('viewBox',`0 0 ${W} ${totalH}`);
-    svg.setAttribute('height',totalH);
-    years.forEach((y,i) => {
-      const bw=(totals[i]/maxT)*(W-110), by=i*gap+4;
-      svg.appendChild(svgEl('rect',{x:0,y:by,width:Math.max(2,bw),height:barH,fill:y===currentYear?'#2eab6f':'#a8d5be',rx:3}));
-      svg.appendChild(svgEl('text',{x:Math.max(2,bw)+6,y:by+barH-2,'font-size':'11',fill:'#4a6080','font-weight':'600'})).textContent=`${y}: ${fmt(totals[i])}`;
+    countUp(document.getElementById('b-celkemVydelano'), grandTotal);
+    const svg=document.getElementById('b-chart2'); svg.innerHTML='';
+    const W=getChartWidth(svg), bH=14, g=22, tH=years.length*g+10;
+    svg.setAttribute('viewBox',`0 0 ${W} ${tH}`);
+    svg.setAttribute('height',tH);
+    years.forEach((y,i)=>{
+      const bw=(totals[i]/maxT)*(W-110), by=i*g+4;
+      svg.appendChild(svgEl('rect',{x:0,y:by,width:Math.max(2,bw),height:bH,fill:y===currentYear?'#2eab6f':cssVar('--c-past-green'),rx:3}));
+      svg.appendChild(svgEl('text',{x:Math.max(2,bw)+6,y:by+bH-2,'font-size':'11',fill:cssVar('--c-val'),'font-weight':'600'})).textContent=`${y}: ${fmt(totals[i])}`;
     });
   }
 
@@ -1109,11 +1314,11 @@ const PODNIKANI = (() => {
   function scheduleCharts() { clearTimeout(chartTimer); chartTimer=setTimeout(()=>{ renderChart1(); renderComparison(); },80); }
 
   function setupEvents() {
-    document.getElementById('b-yearSelect').addEventListener('change', e => {
+    document.getElementById('b-yearSelect').addEventListener('change', e=>{
       currentYear=e.target.value; data.currentYear=currentYear; saveData();
-      renderTable(); renderMobileCards(); renderYearSelect(); scheduleCharts();
+      renderTable(true); renderMobileCards(true); renderYearSelect(); renderGoalCard(); scheduleCharts();
     });
-    document.getElementById('b-btnNewYear').addEventListener('click', () => {
+    document.getElementById('b-btnNewYear').addEventListener('click', ()=>{
       const years=Object.keys(data.years).map(Number).sort((a,b)=>a-b);
       const suggested=years[years.length-1]+1;
       const input=window.prompt(`Přidat nový rok (navrhovaný: ${suggested}):`,suggested);
@@ -1123,21 +1328,23 @@ const PODNIKANI = (() => {
       const ys=String(y);
       if (data.years[ys]) { alert(`Rok ${ys} již existuje.`); return; }
       data.years[ys]=emptyYear(); currentYear=ys; data.currentYear=currentYear; saveData();
-      renderYearSelect(); renderTable(); renderMobileCards(); scheduleCharts();
+      renderYearSelect(); renderTable(true); renderMobileCards(true); renderGoalCard(); scheduleCharts();
     });
-    document.getElementById('b-btnDeleteYear').addEventListener('click', () => {
+    document.getElementById('b-btnDeleteYear').addEventListener('click', ()=>{
       if (Object.keys(data.years).length<=1) return;
       showDialog(`Smazat rok ${currentYear}?`,`Opravdu chcete smazat rok ${currentYear}? Tato akce je nevratná.`,()=>{
         delete data.years[currentYear];
         const remaining=Object.keys(data.years).sort();
         currentYear=remaining[remaining.length-1]; data.currentYear=currentYear; saveData();
-        renderYearSelect(); renderTable(); renderMobileCards(); scheduleCharts();
+        renderYearSelect(); renderTable(true); renderMobileCards(true); renderGoalCard(); scheduleCharts();
       });
     });
+    setupGoalEvents();
   }
 
   function init() {
-    initData(); renderYearSelect(); renderTable(); renderMobileCards(); setupEvents();
+    initData(); renderYearSelect(); renderTable(true); renderMobileCards(true);
+    renderGoalCard(); setupEvents();
   }
 
   return { init, scheduleCharts };
@@ -1147,7 +1354,8 @@ const PODNIKANI = (() => {
 PRIJMY.init();
 PODNIKANI.init();
 PRIJMY.scheduleCharts();
-window.addEventListener('resize', () => {
+
+window.addEventListener('resize', ()=>{
   if (activeView==='prijmy') PRIJMY.scheduleCharts();
   else PODNIKANI.scheduleCharts();
 });
