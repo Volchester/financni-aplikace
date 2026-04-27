@@ -2381,7 +2381,7 @@ const INVESTICE = (() => {
   }
 
   let chartTimer=null;
-  function scheduleCharts(){clearTimeout(chartTimer);chartTimer=setTimeout(()=>{renderChart();updateHero();renderYearSelect();},80);}
+  function scheduleCharts(){clearTimeout(chartTimer);chartTimer=setTimeout(()=>{renderChart();updateHero();},80);}
 
   function setRange(range){
     activeRange=range;
@@ -2390,6 +2390,7 @@ const INVESTICE = (() => {
   }
 
   function setYear(val){
+    if(!val) return;
     data.currentYear=val; saveData(); renderAccordion();
   }
 
