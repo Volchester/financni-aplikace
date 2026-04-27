@@ -2226,19 +2226,12 @@ const INVESTICE = (() => {
 
   function getPeriodPerformance(keys) {
     if(keys.length<2) return null;
-    let cumReturn=1, validSteps=0;
-    for(let i=1;i<keys.length;i++){
-      const prev=getMonthData(keys[i-1]), curr=getMonthData(keys[i]);
-      if(prev.value<=0) continue;
-      const contribution=curr.invested-prev.invested;
-      const monthlyReturn=(curr.value-prev.value-contribution)/prev.value;
-      cumReturn*=(1+monthlyReturn); validSteps++;
-    }
-    if(validSteps===0) return null;
     const start=getMonthData(keys[0]), end=getMonthData(keys[keys.length-1]);
     const contribDelta=end.invested-start.invested;
     const absGain=(end.value-start.value)-contribDelta;
-    return {pct:(cumReturn-1)*100, absGain};
+    if(end.invested<=0) return {pct:0, absGain};
+    const pct=(absGain/end.invested)*100;
+    return {pct, absGain};
   }
 
   function updatePeriodPerf() {
