@@ -2348,6 +2348,7 @@ const INVESTICE = (() => {
       const card=document.createElement('div');
       card.className='inv-card'+(isFuture?' inv-future':''); card.id='i-card-'+safe;
       const header=document.createElement('div'); header.className='inv-card-header';
+      header.setAttribute('onclick','INVESTICE.toggleCard(this)');
       header.innerHTML=`
         <div class="inv-card-info">
           <span class="inv-card-month">${MESICE_LABELS[+mo-1]}</span>
@@ -2360,36 +2361,27 @@ const INVESTICE = (() => {
         <div class="inv-card-fields">
           <div class="inv-card-field">
             <label>Hodnota portfolia</label>
-            <input type="number" inputmode="numeric" min="0" step="1" value="${d.value||''}" placeholder="0" data-key="${key}" data-field="value">
+            <input type="number" inputmode="numeric" min="0" step="1" value="${d.value||''}" placeholder="0" data-key="${key}" data-field="value" oninput="INVESTICE.handleInput(this)" onfocus="this.select()">
           </div>
           <div class="inv-card-field">
             <label>Vloženo celkem</label>
-            <input type="number" inputmode="numeric" min="0" step="1" value="${d.invested||''}" placeholder="0" data-key="${key}" data-field="invested">
+            <input type="number" inputmode="numeric" min="0" step="1" value="${d.invested||''}" placeholder="0" data-key="${key}" data-field="invested" oninput="INVESTICE.handleInput(this)" onfocus="this.select()">
           </div>
         </div>`;
       card.appendChild(header); card.appendChild(body); cont.appendChild(card);
     });
   }
 
-  function setupAccordionEvents() {
-    const cont=document.getElementById('i-accordion');
-    if(!cont||cont._eventsBound) return;
-    cont._eventsBound=true;
-    cont.addEventListener('click', e=>{
-      const header=e.target.closest('.inv-card-header');
-      if(header) header.parentElement.classList.toggle('open');
-    });
-    cont.addEventListener('input', e=>{
-      const inp=e.target;
-      if(!inp.dataset||!inp.dataset.key) return;
-      const k=inp.dataset.key, f=inp.dataset.field;
-      if(!data.months[k]) data.months[k]={};
-      data.months[k][f]=parseInt(inp.value,10)||0;
-      saveData(); updateCardHeader(k); scheduleCharts();
-    });
-    cont.addEventListener('focusin', e=>{
-      if(e.target.tagName==='INPUT') e.target.select();
-    });
+  function toggleCard(headerEl) {
+    if(headerEl&&headerEl.parentElement) headerEl.parentElement.classList.toggle('open');
+  }
+
+  function handleInput(inp) {
+    if(!inp||!inp.dataset||!inp.dataset.key) return;
+    const k=inp.dataset.key, f=inp.dataset.field;
+    if(!data.months[k]) data.months[k]={};
+    data.months[k][f]=parseInt(inp.value,10)||0;
+    saveData(); updateCardHeader(k); scheduleCharts();
   }
 
   let chartTimer=null;
@@ -2411,9 +2403,9 @@ const INVESTICE = (() => {
     data.currentYear=next; saveData(); renderAccordion();
   }
 
-  function init(){initData();updateHero();renderChart();renderAccordion();setupAccordionEvents();}
+  function init(){initData();updateHero();renderChart();renderAccordion();}
 
-  return {init, scheduleCharts, setRange, setYear, addYear};
+  return {init, scheduleCharts, setRange, setYear, addYear, toggleCard, handleInput};
 })();
 
 /* ── Init ── */
