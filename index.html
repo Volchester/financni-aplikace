@@ -2157,8 +2157,8 @@ const INVESTICE = (() => {
 
   function initData() {
     try { const s=localStorage.getItem(STORAGE_KEY); if(s) data=Object.assign({months:{},currentYear:'2025',extraYears:['2026']},JSON.parse(s)); } catch(e) {}
-    if (!data.months) data.months={};
-    if (!data.extraYears||!data.extraYears.length) data.extraYears=['2026'];
+    if (!data.months || typeof data.months !== 'object') data.months={};
+    if (!Array.isArray(data.extraYears) || !data.extraYears.length) data.extraYears=['2026'];
     if (!data.currentYear) data.currentYear='2025';
     const hasYearData = yr => Object.keys(HISTORY).some(k=>k.startsWith(yr+'-')) ||
       Object.keys(data.months).some(k=>k.startsWith(yr+'-')&&((data.months[k].value||0)>0||(data.months[k].invested||0)>0));
@@ -2363,22 +2363,27 @@ const INVESTICE = (() => {
         </div>`;
       card.appendChild(header); card.appendChild(body); cont.appendChild(card);
     });
-    // Event delegation pro rozbalení karet a editaci inputů
+  }
+
+  function setupAccordionEvents() {
+    const cont=document.getElementById('i-accordion');
+    if(!cont||cont._eventsBound) return;
+    cont._eventsBound=true;
     cont.addEventListener('click', e=>{
       const header=e.target.closest('.inv-card-header');
       if(header) header.parentElement.classList.toggle('open');
     });
     cont.addEventListener('input', e=>{
       const inp=e.target;
-      if(!inp.dataset.key) return;
+      if(!inp.dataset||!inp.dataset.key) return;
       const k=inp.dataset.key, f=inp.dataset.field;
       if(!data.months[k]) data.months[k]={};
       data.months[k][f]=parseInt(inp.value,10)||0;
       saveData(); updateCardHeader(k); scheduleCharts();
     });
-    cont.addEventListener('focus', e=>{
+    cont.addEventListener('focusin', e=>{
       if(e.target.tagName==='INPUT') e.target.select();
-    }, true);
+    });
   }
 
   let chartTimer=null;
@@ -2400,7 +2405,7 @@ const INVESTICE = (() => {
     data.currentYear=next; saveData(); renderAccordion();
   }
 
-  function init(){initData();updateHero();renderChart();renderAccordion();}
+  function init(){initData();updateHero();renderChart();renderAccordion();setupAccordionEvents();}
 
   return {init, scheduleCharts, setRange, setYear, addYear};
 })();
