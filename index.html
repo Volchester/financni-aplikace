@@ -2171,7 +2171,8 @@ const INVESTICE = (() => {
   function saveData() { try { localStorage.setItem(STORAGE_KEY,JSON.stringify(data)); } catch(e) {} }
 
   function getAllYears() {
-    return [...new Set(['2021','2022','2023','2024','2025',...data.extraYears])].sort();
+    const extras = Array.isArray(data.extraYears) ? data.extraYears : ['2026'];
+    return [...new Set(['2021','2022','2023','2024','2025',...extras])].sort();
   }
 
   function getMonthsForYear(yr) {
@@ -2309,12 +2310,17 @@ const INVESTICE = (() => {
   }
 
   function renderYearSelect() {
-    const sel=document.getElementById('i-yearSelect'); sel.innerHTML='';
-    getAllYears().forEach(y=>{
-      const o=document.createElement('option'); o.value=y; o.textContent=y;
-      if(y===data.currentYear) o.selected=true;
-      sel.appendChild(o);
-    });
+    try {
+      const sel=document.getElementById('i-yearSelect');
+      if(!sel) return;
+      const years=getAllYears();
+      sel.innerHTML='';
+      years.forEach(y=>{
+        const o=document.createElement('option'); o.value=y; o.textContent=y;
+        if(y===data.currentYear) o.selected=true;
+        sel.appendChild(o);
+      });
+    } catch(e) { console.error('renderYearSelect:', e); }
   }
 
   function updateCardHeader(key) {
@@ -2387,7 +2393,7 @@ const INVESTICE = (() => {
   }
 
   let chartTimer=null;
-  function scheduleCharts(){clearTimeout(chartTimer);chartTimer=setTimeout(()=>{renderChart();updateHero();},80);}
+  function scheduleCharts(){clearTimeout(chartTimer);chartTimer=setTimeout(()=>{renderChart();updateHero();renderYearSelect();},80);}
 
   function setRange(range){
     activeRange=range;
