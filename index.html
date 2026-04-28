@@ -2163,9 +2163,7 @@ const INVESTICE = (() => {
     if (!data.months || typeof data.months !== 'object') data.months={};
     if (!Array.isArray(data.extraYears) || !data.extraYears.length) data.extraYears=['2026'];
     if (!data.currentYear) data.currentYear='2025';
-    const hasYearData = yr => Object.keys(HISTORY).some(k=>k.startsWith(yr+'-')) ||
-      Object.keys(data.months).some(k=>k.startsWith(yr+'-')&&((data.months[k].value||0)>0||(data.months[k].invested||0)>0));
-    if (!hasYearData(data.currentYear)) {
+    if (!getAllYears().includes(data.currentYear)) {
       data.currentYear = Object.keys(HISTORY).sort().pop().slice(0,4);
     }
     saveData();
@@ -2310,12 +2308,9 @@ const INVESTICE = (() => {
       const sel=document.getElementById('i-yearSelect');
       if(!sel) return;
       const years=getAllYears();
-      sel.innerHTML='';
-      years.forEach(y=>{
-        const o=document.createElement('option'); o.value=y; o.textContent=y;
-        if(y===data.currentYear) o.selected=true;
-        sel.appendChild(o);
-      });
+      const html=years.map(y=>`<option value="${y}"${y===data.currentYear?' selected':''}>${y}</option>`).join('');
+      if(sel.innerHTML!==html) sel.innerHTML=html;
+      if(sel.value!==data.currentYear) sel.value=data.currentYear;
     } catch(e) { console.error('renderYearSelect:', e); }
   }
 
@@ -2390,7 +2385,7 @@ const INVESTICE = (() => {
   }
 
   function setYear(val){
-    if(!val) return;
+    if(!val||!getAllYears().includes(val)||val===data.currentYear) return;
     data.currentYear=val; saveData(); renderAccordion();
   }
 
