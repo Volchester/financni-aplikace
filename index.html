@@ -2381,7 +2381,7 @@ const INVESTICE = (() => {
   }
 
   let chartTimer=null;
-  function scheduleCharts(){clearTimeout(chartTimer);chartTimer=setTimeout(()=>{renderChart();updateHero();},80);}
+  function scheduleCharts(){clearTimeout(chartTimer);chartTimer=setTimeout(()=>{renderChart();updateHero();renderYearSelect();},80);}
 
   function setRange(range){
     activeRange=range;
