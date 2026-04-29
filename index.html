@@ -2205,7 +2205,7 @@ const INVESTICE = (() => {
     const last=all[all.length-1];
     switch(range) {
       case '1m':  return all.slice(-2);
-      case 'ytd': { const yr=last.slice(0,4); return all.filter(k=>k>=`${yr}-01`); }
+      case 'ytd': { const yr=Number(last.slice(0,4)); return all.filter(k=>k>=`${yr-1}-12`); }
       case '1r':  return all.filter(k=>k>shiftKey(last,-12));
       case '2r':  return all.filter(k=>k>shiftKey(last,-24));
       case '3r':  return all.filter(k=>k>shiftKey(last,-36));
