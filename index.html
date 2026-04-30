@@ -617,8 +617,22 @@
           </thead>
           <tbody id="p-tableBody"></tbody>
           <tfoot>
-            <tr><td>Dohromady</td><td></td><td></td><td></td><td></td><td class="foot-total" id="p-footTotal">0 Kč</td></tr>
-            <tr><td>Průměr / měsíc</td><td></td><td></td><td></td><td></td><td class="foot-avg" id="p-footAvg">0 Kč</td></tr>
+            <tr>
+              <td>Průměr / měsíc</td>
+              <td class="foot-avg" id="p-footAvg-prace">0 Kč</td>
+              <td class="foot-avg" id="p-footAvg-stravne">0 Kč</td>
+              <td class="foot-avg" id="p-footAvg-cp">0 Kč</td>
+              <td class="foot-avg" id="p-footAvg-pod">0 Kč</td>
+              <td class="foot-avg" id="p-footAvg">0 Kč</td>
+            </tr>
+            <tr>
+              <td>Dohromady</td>
+              <td class="foot-total" id="p-footTotal-prace">0 Kč</td>
+              <td class="foot-total" id="p-footTotal-stravne">0 Kč</td>
+              <td class="foot-total" id="p-footTotal-cp">0 Kč</td>
+              <td class="foot-total" id="p-footTotal-pod">0 Kč</td>
+              <td class="foot-total" id="p-footTotal">0 Kč</td>
+            </tr>
           </tfoot>
         </table>
       </div>
@@ -1147,13 +1161,10 @@ const PRIJMY = (() => {
   function renderTable(animate) {
     const tbody = document.getElementById('p-tableBody');
     tbody.innerHTML = '';
-    let totalCelkem = 0, filledMonths = 0;
     MESICE_KEYS.forEach((mk, i) => {
       const md = getMonthData(currentYear, mk);
       const celkemPrace = md.prace + md.stravne;
       const celkem = celkemPrace + md.podnikani;
-      totalCelkem += celkem;
-      if (celkem > 0) filledMonths++;
       const tr = document.createElement('tr');
       tr.className = 'data-row';
       tr.innerHTML = `
@@ -1171,19 +1182,16 @@ const PRIJMY = (() => {
       });
       tbody.appendChild(tr);
     });
-    updateFooter(totalCelkem, filledMonths, animate);
+    updateFooter(animate);
   }
 
   function renderMobileCards(animate) {
     const container = document.getElementById('p-mobileCards');
     container.innerHTML = '';
-    let totalCelkem = 0, filledMonths = 0;
     MESICE_KEYS.forEach((mk, i) => {
       const md = getMonthData(currentYear, mk);
       const celkemPrace = md.prace + md.stravne;
       const celkem = celkemPrace + md.podnikani;
-      totalCelkem += celkem;
-      if (celkem > 0) filledMonths++;
       const card = document.createElement('div');
       card.className = 'month-card';
       const header = document.createElement('div');
@@ -1211,7 +1219,7 @@ const PRIJMY = (() => {
       card.appendChild(header); card.appendChild(body);
       container.appendChild(card);
     });
-    updateFooter(totalCelkem, filledMonths, animate);
+    updateFooter(animate);
   }
 
   function onInputChange(month, field, rawValue) {
@@ -1231,29 +1239,40 @@ const PRIJMY = (() => {
     if (mcSum) { mcSum.textContent = celkem > 0 ? fmt(celkem) : '—'; mcSum.className = `mc-summary ${celkem===0?'zero':''}`; }
     if (mcCp)  mcCp.textContent = celkemPrace > 0 ? fmt(celkemPrace) : '—';
     if (mcC)   mcC.textContent  = celkem > 0 ? fmt(celkem) : '—';
-    recalcFooter();
+    updateFooter(false);
     scheduleSave();
     scheduleCharts();
   }
 
-  function recalcFooter() {
+  function updateFooter(animate) {
     const yd = getYearData(currentYear);
-    let total = 0, filled = 0;
-    MESICE_KEYS.forEach(mk => { const md = yd[mk]||{}; const s = (md.prace||0)+(md.stravne||0)+(md.podnikani||0); total += s; if (s>0) filled++; });
-    updateFooter(total, filled, false);
-  }
-
-  function updateFooter(total, filledMonths, animate) {
-    const avg = filledMonths > 0 ? total / filledMonths : 0;
+    let tPrace=0, tStravne=0, tCp=0, tPod=0, tCelkem=0, filled=0;
+    MESICE_KEYS.forEach(mk => {
+      const md = yd[mk]||{};
+      const p=md.prace||0, s=md.stravne||0, b=md.podnikani||0;
+      const cp=p+s, c=cp+b;
+      tPrace+=p; tStravne+=s; tCp+=cp; tPod+=b; tCelkem+=c;
+      if (c>0) filled++;
+    });
+    const div = filled>0 ? filled : 1;
+    const avgP=filled>0?tPrace/div:0, avgS=filled>0?tStravne/div:0, avgCp=filled>0?tCp/div:0, avgB=filled>0?tPod/div:0, avgC=filled>0?tCelkem/div:0;
     if (animate) {
-      countUp(document.getElementById('p-footTotal'),  total);
-      countUp(document.getElementById('p-mFootTotal'), total);
+      countUp(document.getElementById('p-footTotal'),  tCelkem);
+      countUp(document.getElementById('p-mFootTotal'), tCelkem);
     } else {
-      document.getElementById('p-footTotal').textContent  = fmt(total);
-      document.getElementById('p-mFootTotal').textContent = fmt(total);
+      document.getElementById('p-footTotal').textContent = fmt(tCelkem);
+      document.getElementById('p-mFootTotal').textContent = fmt(tCelkem);
     }
-    document.getElementById('p-footAvg').textContent   = fmt(avg);
-    document.getElementById('p-mFootAvg').textContent  = fmt(avg);
+    document.getElementById('p-footTotal-prace').textContent   = fmt(tPrace);
+    document.getElementById('p-footTotal-stravne').textContent = fmt(tStravne);
+    document.getElementById('p-footTotal-cp').textContent      = fmt(tCp);
+    document.getElementById('p-footTotal-pod').textContent     = fmt(tPod);
+    document.getElementById('p-footAvg').textContent           = fmt(avgC);
+    document.getElementById('p-footAvg-prace').textContent     = fmt(avgP);
+    document.getElementById('p-footAvg-stravne').textContent   = fmt(avgS);
+    document.getElementById('p-footAvg-cp').textContent        = fmt(avgCp);
+    document.getElementById('p-footAvg-pod').textContent       = fmt(avgB);
+    document.getElementById('p-mFootAvg').textContent          = fmt(avgC);
   }
 
   function getYearTotal(y) {
