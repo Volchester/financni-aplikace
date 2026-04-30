@@ -2212,8 +2212,20 @@ const INVESTICE = (() => {
     return [...new Set([...Object.keys(HISTORY),...live])].sort();
   }
 
-  /* Měsíční výkonnost: ((val_N - val_{N-1}) - nové vklady) / val_{N-1}.
-     Stav v měsíci = poslední den měsíce; prev = poslední den minulého měsíce. */
+  /* Modified Dietz výkonnost za libovolné období:
+     R = (V_end − V_start − C) / (V_start + C/2)
+     Předpoklad: vklady C rovnoměrně rozloženy v období → průměrná expozice V_start + C/2.
+     Stav = poslední den měsíce. */
+  function periodReturn(startKey, endKey) {
+    const start = getMonthData(startKey);
+    const end = getMonthData(endKey);
+    const contrib = end.invested - start.invested;
+    const absGain = (end.value - start.value) - contrib;
+    const denom = start.value + contrib / 2;
+    if (denom <= 0) return null;
+    return { pct: (absGain / denom) * 100, absGain };
+  }
+
   function getMonthPerf(key) {
     if (!hasMonthData(key)) return null;
     const prevKey = shiftKey(key, -1);
@@ -2221,10 +2233,7 @@ const INVESTICE = (() => {
     const prev = getMonthData(prevKey);
     const curr = getMonthData(key);
     if (prev.value <= 0 || curr.value <= 0 || curr.invested <= 0) return null;
-    const newContrib = curr.invested - prev.invested;
-    const absGain = (curr.value - prev.value) - newContrib;
-    const pct = (absGain / prev.value) * 100;
-    return { pct, absGain };
+    return periodReturn(prevKey, key);
   }
 
   /* Roční výkonnost: prosinec N-1 → prosinec N (nebo poslední dostupný měsíc roku N) */
@@ -2240,10 +2249,9 @@ const INVESTICE = (() => {
     const start = getMonthData(startKey);
     const end = getMonthData(endKey);
     if (start.value <= 0 || end.value <= 0 || end.invested <= 0) return null;
-    const contrib = end.invested - start.invested;
-    const absGain = (end.value - start.value) - contrib;
-    const pct = (absGain / start.value) * 100;
-    return { year: Y, pct, absGain, partial: !isFull, endKey };
+    const r = periodReturn(startKey, endKey);
+    if (!r) return null;
+    return { year: Y, pct: r.pct, absGain: r.absGain, partial: !isFull, endKey };
   }
 
   function getAvgYearPerf() {
