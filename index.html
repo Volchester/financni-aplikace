@@ -539,6 +539,20 @@
   .inv-card-field input { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 14px; background: var(--surface); color: var(--text); }
   .inv-card-field input:focus { outline: none; border-color: #7c3aed; box-shadow: 0 0 0 2px rgba(124,58,237,0.15); }
   .inv-card.inv-future { opacity: 0.45; }
+  #i-yearly { padding: 14px 16px 14px; margin-top: 8px; }
+  #i-yearly .app-header { padding: 0 0 8px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+  .inv-yearly-list { display: flex; flex-direction: column; }
+  .inv-yearly-row { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .inv-yearly-row:last-child { border-bottom: none; }
+  .inv-yearly-year { font-weight: 600; font-size: 14px; color: var(--text); }
+  .inv-yearly-tag { font-size: 10px; font-weight: 600; color: var(--text-muted); background: var(--bg); padding: 1px 6px; border-radius: 4px; margin-left: 6px; vertical-align: middle; }
+  .inv-yearly-pct { font-weight: 700; font-size: 14px; }
+  .inv-yearly-pct.pos { color: var(--green); }
+  .inv-yearly-pct.neg { color: #e05252; }
+  .inv-yearly-avg { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 12px; margin-top: 8px; background: var(--bg); border-radius: 8px; }
+  .inv-yearly-avg-label { font-size: 13px; color: var(--text); font-weight: 600; }
+  .inv-yearly-avg-count { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+  .inv-yearly-avg .inv-yearly-pct { font-size: 16px; }
 </style>
 </head>
 <body>
@@ -842,6 +856,8 @@
       </div>
     </div>
     <div id="i-accordion"></div>
+
+    <div class="card" id="i-yearly" style="display:none"></div>
 
   </div><!-- /view-investice -->
 
@@ -2185,9 +2201,56 @@ const INVESTICE = (() => {
     const d=data.months[key]||HISTORY[key]||{}; return {invested:d.invested||0,value:d.value||0};
   }
 
+  function hasMonthData(key) {
+    if (HISTORY[key]) return true;
+    const d=data.months[key];
+    return !!(d && ((d.invested||0)>0 || (d.value||0)>0));
+  }
+
   function getAllKeys() {
     const live=Object.keys(data.months).filter(k=>{const d=data.months[k];return(d.invested||0)>0||(d.value||0)>0;});
     return [...new Set([...Object.keys(HISTORY),...live])].sort();
+  }
+
+  /* Měsíční výkonnost: ((val_N - val_{N-1}) - nové vklady) / val_{N-1}.
+     Stav v měsíci = poslední den měsíce; prev = poslední den minulého měsíce. */
+  function getMonthPerf(key) {
+    if (!hasMonthData(key)) return null;
+    const prevKey = shiftKey(key, -1);
+    if (!hasMonthData(prevKey)) return null;
+    const prev = getMonthData(prevKey);
+    const curr = getMonthData(key);
+    if (prev.value <= 0 || curr.value <= 0 || curr.invested <= 0) return null;
+    const newContrib = curr.invested - prev.invested;
+    const absGain = (curr.value - prev.value) - newContrib;
+    const pct = (absGain / prev.value) * 100;
+    return { pct, absGain };
+  }
+
+  /* Roční výkonnost: prosinec N-1 → prosinec N (nebo poslední dostupný měsíc roku N) */
+  function getYearPerf(year) {
+    const Y = Number(year);
+    const startKey = `${Y-1}-12`;
+    if (!hasMonthData(startKey)) return null;
+    const yearKeys = getAllKeys().filter(k => k.startsWith(`${Y}-`));
+    if (!yearKeys.length) return null;
+    const endKeyFull = `${Y}-12`;
+    const isFull = hasMonthData(endKeyFull);
+    const endKey = isFull ? endKeyFull : yearKeys[yearKeys.length - 1];
+    const start = getMonthData(startKey);
+    const end = getMonthData(endKey);
+    if (start.value <= 0 || end.value <= 0 || end.invested <= 0) return null;
+    const contrib = end.invested - start.invested;
+    const absGain = (end.value - start.value) - contrib;
+    const pct = (absGain / start.value) * 100;
+    return { year: Y, pct, absGain, partial: !isFull, endKey };
+  }
+
+  function getAvgYearPerf() {
+    const perfs = getAllYears().map(getYearPerf).filter(p => p && !p.partial);
+    if (!perfs.length) return null;
+    const avg = perfs.reduce((s, p) => s + p.pct, 0) / perfs.length;
+    return { pct: avg, count: perfs.length };
   }
 
   function getLatestData() {
@@ -2317,13 +2380,13 @@ const INVESTICE = (() => {
 
   function updateCardHeader(key) {
     const safe=key.replace(/-/g,'_');
-    const d=getMonthData(key), gain=(d.value&&d.invested)?d.value-d.invested:null;
-    const pct=gain!==null&&d.invested?gain/d.invested*100:null;
+    const d=getMonthData(key);
+    const perf=getMonthPerf(key);
     const valEl=document.getElementById('i-val-'+safe);
     if(valEl){valEl.textContent=d.value?fmt(d.value):'—';valEl.className='inv-card-value'+(d.value?' has-data':'');}
     const yEl=document.getElementById('i-yield-'+safe);
     if(yEl){
-      if(pct!==null){yEl.textContent=`${pct>=0?'+':''}${pct.toFixed(1).replace('.',',')}%`;yEl.className=`inv-card-yield ${pct>=0?'pos':'neg'}`;yEl.style.display='';}
+      if(perf){yEl.textContent=`${perf.pct>=0?'+':''}${perf.pct.toFixed(1).replace('.',',')}%`;yEl.className=`inv-card-yield ${perf.pct>=0?'pos':'neg'}`;yEl.style.display='';}
       else yEl.style.display='none';
     }
   }
@@ -2336,7 +2399,7 @@ const INVESTICE = (() => {
     months.forEach(mo=>{
       const key=`${year}-${mo}`, safe=key.replace(/-/g,'_');
       const d=getMonthData(key), isFuture=key>nowKey;
-      const gain=(d.value&&d.invested)?d.value-d.invested:null, pct=gain!==null&&d.invested?gain/d.invested*100:null;
+      const perf=getMonthPerf(key);
       const card=document.createElement('div');
       card.className='inv-card'+(isFuture?' inv-future':''); card.id='i-card-'+safe;
       const header=document.createElement('div'); header.className='inv-card-header';
@@ -2345,7 +2408,7 @@ const INVESTICE = (() => {
         <div class="inv-card-info">
           <span class="inv-card-month">${MESICE_LABELS[+mo-1]}</span>
           <span class="inv-card-value${d.value?' has-data':''}" id="i-val-${safe}">${d.value?fmt(d.value):'—'}</span>
-          <span class="inv-card-yield ${pct!==null?(pct>=0?'pos':'neg'):''}" id="i-yield-${safe}" style="${pct===null?'display:none':''}">${pct!==null?`${pct>=0?'+':''}${pct.toFixed(1).replace('.',',')}%`:''}</span>
+          <span class="inv-card-yield ${perf?(perf.pct>=0?'pos':'neg'):''}" id="i-yield-${safe}" style="${perf?'':'display:none'}">${perf?`${perf.pct>=0?'+':''}${perf.pct.toFixed(1).replace('.',',')}%`:''}</span>
         </div>
         <svg class="inv-card-chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
       const body=document.createElement('div'); body.className='inv-card-body';
@@ -2368,16 +2431,43 @@ const INVESTICE = (() => {
     if(headerEl&&headerEl.parentElement) headerEl.parentElement.classList.toggle('open');
   }
 
+  function renderYearlyComparison() {
+    const cont=document.getElementById('i-yearly'); if(!cont) return;
+    const perfs=getAllYears().map(getYearPerf).filter(Boolean);
+    if(!perfs.length) { cont.style.display='none'; cont.innerHTML=''; return; }
+    const rows=perfs.map(p=>{
+      const sign=p.pct>=0?'+':'';
+      const tag=p.partial?' <span class="inv-yearly-tag">YTD</span>':'';
+      return `<div class="inv-yearly-row">
+        <span class="inv-yearly-year">${p.year}${tag}</span>
+        <span class="inv-yearly-pct ${p.pct>=0?'pos':'neg'}">${sign}${p.pct.toFixed(1).replace('.',',')} %</span>
+      </div>`;
+    }).join('');
+    const avg=getAvgYearPerf();
+    const avgRow=avg?`<div class="inv-yearly-avg">
+      <span class="inv-yearly-avg-label">Průměrná roční výkonnost <span class="inv-yearly-avg-count">(${avg.count} ${avg.count===1?'rok':avg.count<5?'roky':'let'})</span></span>
+      <span class="inv-yearly-pct ${avg.pct>=0?'pos':'neg'}">${avg.pct>=0?'+':''}${avg.pct.toFixed(1).replace('.',',')} %</span>
+    </div>`:'';
+    cont.innerHTML=`
+      <div class="app-header"><span class="app-title">Meziroční srovnání</span></div>
+      <div class="inv-yearly-list">${rows}</div>
+      ${avgRow}`;
+    cont.style.display='';
+  }
+
   function handleInput(inp) {
     if(!inp||!inp.dataset||!inp.dataset.key) return;
     const k=inp.dataset.key, f=inp.dataset.field;
     if(!data.months[k]) data.months[k]={};
     data.months[k][f]=parseInt(inp.value,10)||0;
-    saveData(); updateCardHeader(k); scheduleCharts();
+    saveData();
+    updateCardHeader(k);
+    updateCardHeader(shiftKey(k,1));
+    scheduleCharts();
   }
 
   let chartTimer=null;
-  function scheduleCharts(){clearTimeout(chartTimer);chartTimer=setTimeout(()=>{renderChart();updateHero();renderYearSelect();},80);}
+  function scheduleCharts(){clearTimeout(chartTimer);chartTimer=setTimeout(()=>{renderChart();updateHero();renderYearSelect();renderYearlyComparison();},80);}
 
   function setRange(range){
     activeRange=range;
@@ -2396,7 +2486,7 @@ const INVESTICE = (() => {
     data.currentYear=next; saveData(); renderAccordion();
   }
 
-  function init(){initData();updateHero();renderChart();renderAccordion();}
+  function init(){initData();updateHero();renderChart();renderAccordion();renderYearlyComparison();}
 
   return {init, scheduleCharts, setRange, setYear, addYear, toggleCard, handleInput};
 })();
