@@ -627,10 +627,7 @@
             </tr>
             <tr>
               <td>Dohromady</td>
-              <td class="foot-total" id="p-footTotal-prace">0 Kč</td>
-              <td class="foot-total" id="p-footTotal-stravne">0 Kč</td>
-              <td class="foot-total" id="p-footTotal-cp">0 Kč</td>
-              <td class="foot-total" id="p-footTotal-pod">0 Kč</td>
+              <td></td><td></td><td></td><td></td>
               <td class="foot-total" id="p-footTotal">0 Kč</td>
             </tr>
           </tfoot>
@@ -1263,10 +1260,6 @@ const PRIJMY = (() => {
       document.getElementById('p-footTotal').textContent = fmt(tCelkem);
       document.getElementById('p-mFootTotal').textContent = fmt(tCelkem);
     }
-    document.getElementById('p-footTotal-prace').textContent   = fmt(tPrace);
-    document.getElementById('p-footTotal-stravne').textContent = fmt(tStravne);
-    document.getElementById('p-footTotal-cp').textContent      = fmt(tCp);
-    document.getElementById('p-footTotal-pod').textContent     = fmt(tPod);
     document.getElementById('p-footAvg').textContent           = fmt(avgC);
     document.getElementById('p-footAvg-prace').textContent     = fmt(avgP);
     document.getElementById('p-footAvg-stravne').textContent   = fmt(avgS);
