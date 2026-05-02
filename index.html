@@ -648,6 +648,21 @@
       </div>
     </div>
 
+    <div class="mobile-footer-card" id="p-mobileAvg">
+      <div class="mfc-row">
+        <span class="mfc-label">Práce – průměr / měsíc</span>
+        <span class="mfc-value-avg" id="p-mAvgPrace">0 Kč</span>
+      </div>
+      <div class="mfc-row">
+        <span class="mfc-label">Stravné – průměr / měsíc</span>
+        <span class="mfc-value-avg" id="p-mAvgStravne">0 Kč</span>
+      </div>
+      <div class="mfc-row">
+        <span class="mfc-label">Práce celkem – průměr / měsíc</span>
+        <span class="mfc-value-avg" id="p-mAvgCp">0 Kč</span>
+      </div>
+    </div>
+
     <div class="card">
       <div class="chart-section">
         <div class="chart-label">Měsíční celkové příjmy</div>
@@ -1266,6 +1281,9 @@ const PRIJMY = (() => {
     document.getElementById('p-footAvg-cp').textContent        = fmt(avgCp);
     document.getElementById('p-footAvg-pod').textContent       = fmt(avgB);
     document.getElementById('p-mFootAvg').textContent          = fmt(avgC);
+    document.getElementById('p-mAvgPrace').textContent         = fmt(avgP);
+    document.getElementById('p-mAvgStravne').textContent       = fmt(avgS);
+    document.getElementById('p-mAvgCp').textContent            = fmt(avgCp);
   }
 
   function getYearTotal(y) {
