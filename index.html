@@ -633,6 +633,17 @@
     .nw-hero-value { font-size: 28px; }
     .nw-field input { width: 110px; font-size: 16px; }
   }
+
+  /* ── Backup dialog ── */
+  .backup-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+  .backup-actions .btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 16px; font-size: 14px; font-weight: 500; }
+  .backup-btn-export { background: #2d6be4; color: #fff; border-color: #2d6be4; }
+  .backup-btn-export:hover { filter: brightness(1.05); }
+  .backup-btn-import { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+  .backup-btn-import:hover { background: var(--bg); }
+  .backup-btn-revert { background: var(--surface); color: var(--text-muted); border: 1px dashed var(--border); }
+  .backup-btn-revert:hover { color: var(--text); border-color: var(--text-muted); }
+  .backup-meta { font-size: 12px; color: var(--text-muted); margin-top: 14px; text-align: center; }
 </style>
 </head>
 <body>
@@ -653,6 +664,13 @@
       </svg>
       <svg id="iconMoon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none">
         <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </button>
+    <button class="theme-toggle" id="backupToggle" title="Záloha dat">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
       </svg>
     </button>
   </div>
@@ -1097,6 +1115,43 @@
     <div class="dialog-buttons" style="margin-top:24px">
       <button class="btn" id="b-goalOdmenaCancel">Zrušit</button>
       <button class="btn btn-primary" id="b-goalOdmenaConfirm">Uložit</button>
+    </div>
+  </div>
+</div>
+
+<div class="dialog-overlay" id="backupOverlay">
+  <div class="dialog">
+    <h3>Záloha dat</h3>
+    <p>Stáhněte si JSON soubor jako zálohu, nebo načtěte dříve uloženou zálohu.</p>
+    <div class="backup-actions">
+      <button class="btn backup-btn-export" id="backupExportBtn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Stáhnout zálohu (.json)
+      </button>
+      <button class="btn backup-btn-import" id="backupImportBtn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        Načíst zálohu (.json)
+      </button>
+      <button class="btn backup-btn-revert" id="backupRevertBtn" style="display:none">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="1 4 1 10 7 10"/>
+          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+        </svg>
+        Vrátit poslední import
+      </button>
+    </div>
+    <p class="backup-meta" id="backupMeta">Zatím žádný export.</p>
+    <input type="file" id="backupFileInput" accept=".json,application/json" style="display:none">
+    <div class="dialog-buttons" style="margin-top:18px">
+      <button class="btn" id="backupClose">Zavřít</button>
     </div>
   </div>
 </div>
@@ -3083,12 +3138,184 @@ const NETWORTH = (() => {
   return { init, refresh };
 })();
 
+/* ════════════════════════════════════════════
+   BACKUP MODULE — Export/Import JSON
+════════════════════════════════════════════ */
+const BACKUP = (() => {
+  const STORAGE_MAP = {
+    prijmy:    'prijmy_app_data',
+    podnikani: 'podnikani_app_data',
+    vydaje:    'vydaje_app_data',
+    investice: 'fin_investice_v1',
+    networth:  'networth_app_data',
+  };
+  const META_KEY = 'backup_meta';
+  const REVERT_KEY = '_backup_before_import';
+
+  function readMeta() {
+    try { return JSON.parse(localStorage.getItem(META_KEY) || '{}'); } catch(e) { return {}; }
+  }
+  function writeMeta(m) { try { localStorage.setItem(META_KEY, JSON.stringify(m)); } catch(e) {} }
+
+  function snapshot() {
+    const out = {};
+    Object.entries(STORAGE_MAP).forEach(([k, sk]) => {
+      const raw = localStorage.getItem(sk);
+      if (raw == null) return;
+      try { out[k] = JSON.parse(raw); } catch(e) { out[k] = raw; }
+    });
+    return out;
+  }
+
+  function applySnapshot(snap) {
+    Object.entries(STORAGE_MAP).forEach(([k, sk]) => {
+      if (snap[k] === undefined) return;
+      const v = typeof snap[k] === 'string' ? snap[k] : JSON.stringify(snap[k]);
+      try { localStorage.setItem(sk, v); } catch(e) {}
+    });
+  }
+
+  function fmtDate(iso) {
+    try {
+      const d = new Date(iso);
+      const dd = String(d.getDate()).padStart(2,'0');
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const yy = d.getFullYear();
+      const hh = String(d.getHours()).padStart(2,'0');
+      const mi = String(d.getMinutes()).padStart(2,'0');
+      return `${dd}. ${mm}. ${yy} ${hh}:${mi}`;
+    } catch(e) { return iso; }
+  }
+
+  function exportData() {
+    const now = new Date();
+    const payload = {
+      version: 1,
+      exportedAt: now.toISOString(),
+      appName: 'Finanční aplikace',
+      data: snapshot(),
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth()+1).padStart(2,'0');
+    const dd = String(now.getDate()).padStart(2,'0');
+    a.href = url;
+    a.download = `finance-zaloha-${yyyy}-${mm}-${dd}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    const meta = readMeta();
+    meta.lastExport = now.toISOString();
+    writeMeta(meta);
+    refreshMetaUI();
+    showStatus();
+  }
+
+  function validatePayload(p) {
+    if (!p || typeof p !== 'object') return 'Neplatný JSON soubor.';
+    if (!p.data || typeof p.data !== 'object') return 'Soubor neobsahuje pole "data".';
+    const keys = Object.keys(p.data);
+    const known = Object.keys(STORAGE_MAP);
+    const hasAny = keys.some(k => known.includes(k));
+    if (!hasAny) return 'Soubor neobsahuje žádnou známou sekci aplikace.';
+    return null;
+  }
+
+  function importFromFile(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      let payload;
+      try { payload = JSON.parse(e.target.result); }
+      catch(err) { alert('Soubor není platný JSON: ' + err.message); return; }
+      const errMsg = validatePayload(payload);
+      if (errMsg) { alert('Chyba: ' + errMsg); return; }
+      const when = payload.exportedAt ? fmtDate(payload.exportedAt) : 'neznámý čas';
+      showDialog(
+        `Načíst zálohu z ${when}?`,
+        `Vaše současná data budou přepsána. Před přepisem se uloží záložní snapshot, takže lze vrátit zpět. Pokračovat?`,
+        () => {
+          try { localStorage.setItem(REVERT_KEY, JSON.stringify(snapshot())); } catch(e) {}
+          applySnapshot(payload.data);
+          const meta = readMeta();
+          meta.lastImport = new Date().toISOString();
+          meta.importedFromExport = payload.exportedAt || null;
+          writeMeta(meta);
+          location.reload();
+        }
+      );
+    };
+    reader.onerror = () => alert('Nepodařilo se přečíst soubor.');
+    reader.readAsText(file);
+  }
+
+  function revertLastImport() {
+    const raw = localStorage.getItem(REVERT_KEY);
+    if (!raw) { alert('Žádný snapshot k vrácení.'); return; }
+    let snap;
+    try { snap = JSON.parse(raw); } catch(e) { alert('Snapshot je poškozený.'); return; }
+    showDialog(
+      'Vrátit poslední import?',
+      'Aplikace se vrátí do stavu před posledním importem zálohy. Pokračovat?',
+      () => {
+        applySnapshot(snap);
+        localStorage.removeItem(REVERT_KEY);
+        const meta = readMeta();
+        delete meta.lastImport;
+        delete meta.importedFromExport;
+        writeMeta(meta);
+        location.reload();
+      }
+    );
+  }
+
+  function refreshMetaUI() {
+    const el = document.getElementById('backupMeta');
+    const revertBtn = document.getElementById('backupRevertBtn');
+    if (!el) return;
+    const meta = readMeta();
+    const lines = [];
+    if (meta.lastExport) lines.push('Poslední export: ' + fmtDate(meta.lastExport));
+    if (meta.lastImport) lines.push('Poslední import: ' + fmtDate(meta.lastImport));
+    el.textContent = lines.length ? lines.join(' • ') : 'Zatím žádný export.';
+    if (revertBtn) revertBtn.style.display = localStorage.getItem(REVERT_KEY) ? '' : 'none';
+  }
+
+  function open() {
+    refreshMetaUI();
+    document.getElementById('backupOverlay').classList.add('open');
+  }
+  function close() {
+    document.getElementById('backupOverlay').classList.remove('open');
+  }
+
+  function init() {
+    document.getElementById('backupToggle').addEventListener('click', open);
+    document.getElementById('backupClose').addEventListener('click', close);
+    document.getElementById('backupOverlay').addEventListener('click', e => {
+      if (e.target === e.currentTarget) close();
+    });
+    document.getElementById('backupExportBtn').addEventListener('click', exportData);
+    const fileInput = document.getElementById('backupFileInput');
+    document.getElementById('backupImportBtn').addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', e => {
+      const f = e.target.files && e.target.files[0];
+      if (f) importFromFile(f);
+      e.target.value = '';
+    });
+    document.getElementById('backupRevertBtn').addEventListener('click', revertLastImport);
+  }
+
+  return { init };
+})();
+
 /* ── Init ── */
 PRIJMY.init();
 PODNIKANI.init();
 VYDAJE.init();
 INVESTICE.init();
 NETWORTH.init();
+BACKUP.init();
 PRIJMY.scheduleCharts();
 
 window.addEventListener('resize', ()=>{
