@@ -85,6 +85,7 @@
   }
   .nav-tab {
     flex: 1;
+    min-width: 0;
     text-align: center;
     padding: 8px 12px;
     border-radius: 7px;
@@ -99,6 +100,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    white-space: nowrap;
     -webkit-tap-highlight-color: transparent;
     user-select: none;
   }
@@ -505,6 +507,9 @@
     .container { padding: 12px 8px calc(72px + var(--safe-bottom)); padding-top: calc(12px + var(--safe-top)); }
     .app-title { font-size: 18px; }
     .app-header { gap: 8px; }
+    .nav-tabs { gap: 2px; padding: 3px; }
+    .nav-tab { padding: 8px 4px; font-size: 12px; }
+    .theme-toggle { width: 32px; height: 32px; }
     .desktop-table-card { display: none; }
     .mobile-cards { display: block; }
     .mobile-footer-card { display: flex; }
