@@ -2569,7 +2569,7 @@ const INVESTICE = (() => {
   }
 
   function getAvgYearPerf() {
-    const perfs = getAllYears().map(getYearPerf).filter(p => p && !p.partial);
+    const perfs = getAllYears().map(getYearPerf).filter(Boolean);
     if (!perfs.length) return null;
     const avg = perfs.reduce((s, p) => s + p.pct, 0) / perfs.length;
     return { pct: avg, count: perfs.length };
