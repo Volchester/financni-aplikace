@@ -2610,12 +2610,7 @@ const INVESTICE = (() => {
 
   function getPeriodPerformance(keys) {
     if(keys.length<2) return null;
-    const start=getMonthData(keys[0]), end=getMonthData(keys[keys.length-1]);
-    const contribDelta=end.invested-start.invested;
-    const absGain=(end.value-start.value)-contribDelta;
-    if(end.invested<=0) return {pct:0, absGain};
-    const pct=(absGain/end.invested)*100;
-    return {pct, absGain};
+    return periodReturn(keys[0], keys[keys.length-1]);
   }
 
   function updatePeriodPerf() {
