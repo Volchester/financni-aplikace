@@ -2526,16 +2526,17 @@ const INVESTICE = (() => {
     return [...new Set([...Object.keys(HISTORY),...live])].sort();
   }
 
-  /* Modified Dietz výkonnost za libovolné období:
-     R = (V_end − V_start − C) / (V_start + C/2)
-     Předpoklad: vklady C rovnoměrně rozloženy v období → průměrná expozice V_start + C/2.
+  /* Výkonnost za libovolné období = výnos vůči vloženému kapitálu:
+     R = (V_end − V_start − C) / (V_start + C)
+     C = čisté vklady za období. Jmenovatel = celkový vložený kapitál na konci období
+     (ne průměrný jako u Modified Dietz), aby "VŠE" odpovídalo celkové výnosnosti v hero.
      Stav = poslední den měsíce. */
   function periodReturn(startKey, endKey) {
     const start = getMonthData(startKey);
     const end = getMonthData(endKey);
     const contrib = end.invested - start.invested;
     const absGain = (end.value - start.value) - contrib;
-    const denom = start.value + contrib / 2;
+    const denom = start.value + contrib;
     if (denom <= 0) return null;
     return { pct: (absGain / denom) * 100, absGain };
   }
