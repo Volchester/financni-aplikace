@@ -1899,22 +1899,11 @@ const PODNIKANI = (() => {
   }
 
   function getMonthsForAverage(y) {
-    try {
-      const prijmyRaw=localStorage.getItem('prijmy_app_data');
-      if (prijmyRaw) {
-        const pd=JSON.parse(prijmyRaw);
-        const yd=pd.years&&pd.years[y];
-        if (yd) {
-          let count=0;
-          MESICE_KEYS.forEach(mk=>{ const md=yd[mk]||{}; if((md.prace||0)+(md.stravne||0)+(md.podnikani||0)>0) count++; });
-          return Math.max(count,1);
-        }
-      }
-    } catch(e){}
-    const yd=getYearData(y); let first=-1,last=-1;
-    MESICE_KEYS.forEach((mk,i)=>{ if((yd[mk]||{}).zisk>0){ if(first===-1) first=i; last=i; } });
-    if (first===-1) return 1;
-    return last-first+1;
+    // Počítáme pouze vyplněné měsíce (zisk>0) – stejně jako průměr v patičce tabulky,
+    // aby průměr/měsíc vycházel v obou místech shodně.
+    const yd=getYearData(y); let count=0;
+    MESICE_KEYS.forEach(mk=>{ if(((yd[mk]||{}).zisk||0)>0) count++; });
+    return Math.max(count,1);
   }
 
   function renderChart1() {
