@@ -1779,7 +1779,10 @@ const PODNIKANI = (() => {
   }
 
   function updateFooter(total,filledMonths,animate) {
-    const avg=filledMonths>0?total/filledMonths:0;
+    // Průměr/měsíc počítáme stejnou logikou jako roční srovnání (getMonthsForAverage):
+    // aktuální rok = měsíce po poslední vyplněný, minulé roky = všech 12.
+    const months=getMonthsForAverage(currentYear);
+    const avg=months>0?total/months:0;
     if (animate) {
       countUp(document.getElementById('b-footTotal'),  total);
       countUp(document.getElementById('b-mFootTotal'), total);
@@ -1899,11 +1902,12 @@ const PODNIKANI = (() => {
   }
 
   function getMonthsForAverage(y) {
-    // Počítáme pouze vyplněné měsíce (zisk>0) – stejně jako průměr v patičce tabulky,
-    // aby průměr/měsíc vycházel v obou místech shodně.
-    const yd=getYearData(y); let count=0;
-    MESICE_KEYS.forEach(mk=>{ if(((yd[mk]||{}).zisk||0)>0) count++; });
-    return Math.max(count,1);
+    // Minulé (dokončené) roky: průměr ze všech 12 měsíců, i když poslední nejsou vyplněné.
+    if (String(y) !== String(new Date().getFullYear())) return 12;
+    // Aktuální rok: všechny měsíce od ledna po poslední vyplněný (včetně nulových mezi nimi).
+    const yd=getYearData(y); let last=-1;
+    MESICE_KEYS.forEach((mk,i)=>{ if(((yd[mk]||{}).zisk||0)>0) last=i; });
+    return last===-1 ? 1 : last+1;
   }
 
   function renderChart1() {
