@@ -610,6 +610,20 @@
   .nw-bd-value.nw-assets { color: #0d9488; font-weight: 700; }
   .nw-bd-value.nw-liab { color: #e05252; font-weight: 700; }
 
+  .nw-comp { display: flex; align-items: center; gap: 20px; padding: 6px 4px 4px; flex-wrap: wrap; justify-content: center; }
+  .nw-comp-chart { flex-shrink: 0; position: relative; }
+  .nw-donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+  .nw-donut-center-label { font-size: 11px; color: var(--text-muted); }
+  .nw-donut-center-value { font-size: 15px; font-weight: 700; color: var(--text); }
+  .nw-comp-legend { display: flex; flex-direction: column; gap: 12px; min-width: 160px; flex: 1; }
+  .nw-leg-row { display: flex; align-items: center; gap: 10px; }
+  .nw-leg-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+  .nw-leg-text { display: flex; flex-direction: column; line-height: 1.3; }
+  .nw-leg-name { font-size: 13px; color: var(--text-muted); }
+  .nw-leg-amount { font-size: 15px; font-weight: 600; color: var(--text); }
+  .nw-leg-pct { font-weight: 700; }
+  .nw-comp-empty { color: var(--text-muted); font-size: 13px; padding: 16px 0; text-align: center; width: 100%; }
+
   .nw-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); margin-bottom: 8px; overflow: hidden; transition: background 0.2s, border-color 0.2s; }
   .nw-card-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
   .nw-card-info { display: flex; align-items: baseline; gap: 12px; flex: 1; min-width: 0; }
@@ -1039,6 +1053,16 @@
             <span class="nw-bd-value nw-liab" id="nw-bdLiab">0 Kč</span>
           </div>
         </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chart-label">Složení aktiv</div>
+      <div class="nw-comp" id="nw-comp">
+        <div class="nw-comp-chart">
+          <svg id="nw-donut" viewBox="0 0 120 120" width="140" height="140"></svg>
+        </div>
+        <div class="nw-comp-legend" id="nw-donutLegend"></div>
       </div>
     </div>
 
@@ -2991,6 +3015,7 @@ const NETWORTH = (() => {
           scheduleSave();
           updateHero();
           renderChart();
+          renderComposition();
         });
       });
     });
@@ -3047,6 +3072,78 @@ const NETWORTH = (() => {
       heroDelta.textContent = '';
       heroDelta.className = 'nw-hero-delta';
     }
+  }
+
+  const COMP_CASH_COLOR = '#38bdf8';
+  const COMP_INVEST_COLOR = '#0d9488';
+
+  function renderComposition() {
+    const svg = document.getElementById('nw-donut');
+    const legend = document.getElementById('nw-donutLegend');
+    if (!svg || !legend) return;
+    svg.innerHTML = '';
+    legend.innerHTML = '';
+    const parent = svg.parentElement;
+    const oldCenter = parent.querySelector('.nw-donut-center');
+    if (oldCenter) oldCenter.remove();
+
+    const latest = getLatestSnapshot();
+    const cash = latest ? Math.max(0, latest.hotovost) : 0;
+    const inv = latest ? Math.max(0, latest.investice) : 0;
+    const total = cash + inv;
+
+    if (total <= 0) {
+      legend.innerHTML = '<div class="nw-comp-empty">Zatím žádná aktiva k zobrazení</div>';
+      const c = 60, r = 46;
+      svg.appendChild(svgEl('circle', {cx:c, cy:c, r:r, fill:'none', stroke:cssVar('--border'), 'stroke-width':14}));
+      return;
+    }
+
+    const cx = 60, cy = 60, r = 46, sw = 14, C = 2 * Math.PI * r;
+    // background track
+    svg.appendChild(svgEl('circle', {cx, cy, r, fill:'none', stroke:cssVar('--border'), 'stroke-width':sw}));
+
+    const segs = [
+      { color: COMP_INVEST_COLOR, amount: inv },
+      { color: COMP_CASH_COLOR,   amount: cash },
+    ].filter(s => s.amount > 0);
+
+    let offset = 0;
+    segs.forEach(s => {
+      const frac = s.amount / total;
+      const len = frac * C;
+      const arc = svgEl('circle', {
+        cx, cy, r, fill:'none', stroke:s.color, 'stroke-width':sw,
+        'stroke-dasharray': `${len} ${C - len}`,
+        'stroke-dashoffset': -offset,
+        transform: `rotate(-90 ${cx} ${cy})`,
+      });
+      if (segs.length > 1) arc.setAttribute('stroke-linecap', 'butt');
+      svg.appendChild(arc);
+      offset += len;
+    });
+
+    const center = document.createElement('div');
+    center.className = 'nw-donut-center';
+    center.innerHTML = `<span class="nw-donut-center-label">Aktiva</span><span class="nw-donut-center-value">${fmtShort(total)}</span>`;
+    parent.appendChild(center);
+
+    const pct = v => (v / total * 100).toFixed(v / total * 100 >= 10 ? 0 : 1).replace('.', ',');
+    const rows = [
+      { color: COMP_INVEST_COLOR, name: 'Investice', amount: inv },
+      { color: COMP_CASH_COLOR,   name: 'Hotovost',  amount: cash },
+    ];
+    rows.forEach(row => {
+      const el = document.createElement('div');
+      el.className = 'nw-leg-row';
+      el.innerHTML =
+        `<span class="nw-leg-dot" style="background:${row.color}"></span>` +
+        `<span class="nw-leg-text">` +
+          `<span class="nw-leg-name">${row.name} · <span class="nw-leg-pct" style="color:${row.color}">${pct(row.amount)} %</span></span>` +
+          `<span class="nw-leg-amount">${fmt(row.amount)}</span>` +
+        `</span>`;
+      legend.appendChild(el);
+    });
   }
 
   function renderChart() {
@@ -3125,6 +3222,7 @@ const NETWORTH = (() => {
     renderAccordion();
     updateHero();
     renderChart();
+    renderComposition();
   }
 
   function init() { initData(); setupEvents(); }
