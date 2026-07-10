@@ -109,6 +109,7 @@
   .nav-tab.active[data-view="vydaje"]    { background: #e05252; color: #fff; font-weight: 600; }
   .nav-tab.active[data-view="investice"] { background: #7c3aed; color: #fff; font-weight: 600; }
   .nav-tab.active[data-view="networth"]  { background: #0d9488; color: #fff; font-weight: 600; }
+  .nav-tab.active[data-view="opce"]      { background: #d97706; color: #fff; font-weight: 600; }
   .nav-tab:not(.active):hover { background: var(--bg); }
 
   .theme-toggle {
@@ -507,8 +508,8 @@
     .container { padding: 12px 8px calc(72px + var(--safe-bottom)); padding-top: calc(12px + var(--safe-top)); }
     .app-title { font-size: 18px; }
     .app-header { gap: 8px; }
-    .nav-tabs { gap: 2px; padding: 3px; }
-    .nav-tab { padding: 8px 4px; font-size: 12px; }
+    .nav-tabs { gap: 2px; padding: 3px; overflow-x: auto; }
+    .nav-tab { padding: 8px 8px; font-size: 12px; flex: 1 0 auto; }
     .theme-toggle { width: 32px; height: 32px; }
     .desktop-table-card { display: none; }
     .mobile-cards { display: block; }
@@ -653,6 +654,90 @@
     .nw-field input { width: 110px; font-size: 16px; }
   }
 
+  /* ── Opce ── */
+  #view-opce .btn-primary { background: #d97706; color: #fff; border-color: #d97706; }
+  .opc-hero { padding: 20px 16px 16px; }
+  .opc-hero-label { font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+  .opc-hero-value { font-size: 36px; font-weight: 700; color: #d97706; line-height: 1.1; }
+  .opc-hero-value.pos { color: var(--green); }
+  .opc-hero-value.neg { color: #e05252; }
+  .opc-hero-stats { display: flex; gap: 8px; margin-top: 16px; }
+  .opc-stat { flex: 1; background: var(--bg); border-radius: 10px; padding: 10px 8px; text-align: center; min-width: 0; }
+  .opc-stat-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .opc-stat-value { font-size: 13px; font-weight: 700; color: var(--text); }
+  .opc-stat-value.pos { color: var(--green); }
+  .opc-stat-value.neg { color: #e05252; }
+
+  .opc-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; overflow: hidden; box-shadow: var(--shadow); transition: background 0.2s, border-color 0.2s; }
+  .opc-card-header { display: flex; align-items: center; gap: 10px; padding: 13px 16px; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; transition: background 0.15s; }
+  .opc-card-header:hover { background: var(--bg); }
+  .opc-card-info { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; flex-wrap: wrap; }
+  .opc-ticker { font-weight: 700; font-size: 15px; color: var(--text); }
+  .opc-type { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 5px; letter-spacing: 0.05em; flex-shrink: 0; }
+  .opc-type.call { background: var(--green-light); color: var(--green); }
+  .opc-type.put { background: #fdeaea; color: #e05252; }
+  html[data-theme="dark"] .opc-type.put { background: #3a1c1c; }
+  .opc-card-sub { font-size: 12px; color: var(--text-muted); }
+  .opc-dleft { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 10px; white-space: nowrap; flex-shrink: 0; }
+  .opc-dleft.ok   { background: var(--green-light); color: var(--green); }
+  .opc-dleft.warn { background: #fdf3e0; color: #d97706; }
+  .opc-dleft.hot  { background: #fdeaea; color: #e05252; }
+  html[data-theme="dark"] .opc-dleft.warn { background: #3a2c14; }
+  html[data-theme="dark"] .opc-dleft.hot  { background: #3a1c1c; }
+  .opc-profit { font-size: 13px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
+  .opc-profit.pos { color: var(--green); }
+  .opc-profit.neg { color: #e05252; }
+  .opc-profit small { font-weight: 600; font-size: 11px; opacity: 0.85; }
+  .opc-chevron { flex-shrink: 0; color: var(--text-muted); transition: transform 0.22s ease; }
+  .opc-card.open .opc-chevron { transform: rotate(180deg); }
+  .opc-card-body { display: none; padding: 0 16px 16px; border-top: 1px solid var(--border); }
+  .opc-card.open .opc-card-body { display: block; }
+
+  .opc-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-top: 14px; }
+  .opc-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .opc-field label { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+  .opc-field input { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 14px; background: var(--surface); color: var(--text); }
+  .opc-field input:focus { outline: none; border-color: #d97706; box-shadow: 0 0 0 2px rgba(217,119,6,0.15); }
+  .opc-seg { display: flex; gap: 4px; }
+  .opc-seg button { flex: 1; padding: 8px 0; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text-muted); font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.15s, color 0.15s; -webkit-tap-highlight-color: transparent; }
+  .opc-seg button.active.call { background: var(--green); border-color: var(--green); color: #fff; }
+  .opc-seg button.active.put { background: #e05252; border-color: #e05252; color: #fff; }
+
+  #o-form { padding: 0 16px 16px; }
+  .opc-meta { font-size: 12px; color: var(--text-muted); padding-top: 12px; }
+  .opc-actions { display: flex; gap: 8px; padding-top: 14px; flex-wrap: wrap; }
+  .opc-actions .btn { flex: 1; min-width: 110px; }
+
+  .opc-close-form { margin-top: 14px; padding: 14px; background: var(--bg); border-radius: 10px; border: 1px dashed var(--border); }
+  .opc-close-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+  .opc-close-form .opc-fields { padding-top: 10px; }
+
+  .opc-rows { display: flex; flex-direction: column; padding-top: 12px; }
+  .opc-row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; font-size: 13px; border-bottom: 1px solid var(--border); }
+  .opc-row:last-child { border-bottom: none; }
+  .opc-row-label { color: var(--text-muted); flex-shrink: 0; }
+  .opc-row-value { color: var(--text); font-weight: 600; text-align: right; }
+  .opc-row-value.pos { color: var(--green); }
+  .opc-row-value.neg { color: #e05252; }
+
+  .opc-empty { padding: 18px 16px; font-size: 13px; color: var(--text-muted); font-style: italic; text-align: center; }
+
+  #o-yearly { padding: 14px 16px; }
+  .opc-yearly-title { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .opc-yearly-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .opc-yearly-row:last-child { border-bottom: none; }
+  .opc-yearly-year { font-weight: 600; font-size: 14px; color: var(--text); }
+  .opc-yearly-count { font-size: 11px; color: var(--text-muted); font-weight: 500; margin-left: 8px; }
+  .opc-yearly-vals { display: flex; gap: 12px; align-items: baseline; flex-shrink: 0; }
+  .opc-yearly-gain { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+  .opc-yearly-pct { font-weight: 700; font-size: 14px; }
+  .opc-yearly-pct.pos, .opc-yearly-gain.pos { color: var(--green); }
+  .opc-yearly-pct.neg, .opc-yearly-gain.neg { color: #e05252; }
+
+  @media (max-width: 600px) {
+    .opc-hero-value { font-size: 28px; }
+  }
+
   /* ── Backup dialog ── */
   .backup-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
   .backup-actions .btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 16px; font-size: 14px; font-weight: 500; }
@@ -674,6 +759,7 @@
     <button class="nav-tab" data-view="vydaje">Výdaje</button>
     <button class="nav-tab" data-view="investice">Investice</button>
     <button class="nav-tab" data-view="networth">Net Worth</button>
+    <button class="nav-tab" data-view="opce">Opce</button>
     <button class="theme-toggle" id="themeToggle" title="Přepnout tmavý/světlý režim">
       <svg id="iconSun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
@@ -1085,6 +1171,73 @@
 
   </div><!-- /view-networth -->
 
+  <!-- ═══════════════ OPCE VIEW ═══════════════ -->
+  <div id="view-opce" style="display:none">
+
+    <div class="card">
+      <div class="opc-hero">
+        <div class="opc-hero-label">Celkový zisk / ztráta z opcí</div>
+        <div class="opc-hero-value" id="o-heroValue">— Kč</div>
+        <div class="opc-hero-stats">
+          <div class="opc-stat">
+            <div class="opc-stat-label">Návratnost celkem</div>
+            <div class="opc-stat-value" id="o-statReturn">—</div>
+          </div>
+          <div class="opc-stat">
+            <div class="opc-stat-label">Uzavřeno / otevřeno</div>
+            <div class="opc-stat-value" id="o-statCount">—</div>
+          </div>
+          <div class="opc-stat">
+            <div class="opc-stat-label">Úspěšnost</div>
+            <div class="opc-stat-value" id="o-statWin">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:8px">
+      <div class="app-header">
+        <span class="app-title">Otevřené pozice</span>
+        <button class="btn btn-primary" id="o-btnAdd">+ Nový obchod</button>
+      </div>
+    </div>
+
+    <div class="card" id="o-form" style="display:none">
+      <div class="opc-fields">
+        <div class="opc-field"><label>Ticker opce</label><input type="text" id="o-fTicker" placeholder="AAPL JUN26 220 C" autocapitalize="characters"></div>
+        <div class="opc-field"><label>Typ</label>
+          <div class="opc-seg" id="o-fType">
+            <button type="button" class="call active" data-type="call">Call</button>
+            <button type="button" class="put" data-type="put">Put</button>
+          </div>
+        </div>
+        <div class="opc-field"><label>Platí od</label><input type="date" id="o-fFrom"></div>
+        <div class="opc-field"><label>Expirace</label><input type="date" id="o-fTo"></div>
+        <div class="opc-field"><label>Počet kusů</label><input type="number" id="o-fQty" inputmode="numeric" min="1" value="1"></div>
+        <div class="opc-field"><label>Strike ($)</label><input type="number" id="o-fStrike" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+        <div class="opc-field"><label>Break even ($)</label><input type="number" id="o-fBE" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+        <div class="opc-field"><label>Prémium celkem (Kč)</label><input type="number" id="o-fPremium" inputmode="numeric" min="0" placeholder="0"></div>
+      </div>
+      <div class="opc-meta" id="o-fDays">Délka opce: —</div>
+      <div class="opc-actions">
+        <button class="btn btn-primary" id="o-fSave">Uložit obchod</button>
+        <button class="btn" id="o-fCancel">Zrušit</button>
+      </div>
+    </div>
+
+    <div id="o-openList"></div>
+
+    <div class="card" style="margin:16px 0 8px">
+      <div class="app-header">
+        <span class="app-title">Uzavřené obchody</span>
+      </div>
+    </div>
+    <div id="o-closedList"></div>
+
+    <div class="card" id="o-yearly" style="display:none"></div>
+
+  </div><!-- /view-opce -->
+
 </div><!-- /container -->
 
 <div class="dialog-overlay" id="dialogOverlay">
@@ -1302,11 +1455,13 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
     document.getElementById('view-vydaje').style.display    = view === 'vydaje'    ? '' : 'none';
     document.getElementById('view-investice').style.display = view === 'investice' ? '' : 'none';
     document.getElementById('view-networth').style.display  = view === 'networth'  ? '' : 'none';
+    document.getElementById('view-opce').style.display      = view === 'opce'      ? '' : 'none';
     if (view === 'prijmy')    PRIJMY.scheduleCharts();
     if (view === 'podnikani') PODNIKANI.scheduleCharts();
     if (view === 'vydaje')    VYDAJE.scheduleCharts();
     if (view === 'investice') INVESTICE.scheduleCharts();
     if (view === 'networth')  NETWORTH.refresh();
+    if (view === 'opce')      OPCE.refresh();
   });
 });
 
@@ -3231,6 +3386,339 @@ const NETWORTH = (() => {
 })();
 
 /* ════════════════════════════════════════════
+   OPCE MODULE — evidence opčních obchodů (XTB)
+════════════════════════════════════════════ */
+const OPCE = (() => {
+  const STORAGE_KEY = 'opce_app_data';
+  const DAY = 86400000;
+  let data = { trades: [] };
+  let formType = 'call';   // typ ve formuláři nového obchodu
+  let closingId = null;    // id obchodu s otevřeným uzavíracím formulářem
+  const expanded = {};     // rozbalené karty { id: true }
+
+  function initData() {
+    try { const s = localStorage.getItem(STORAGE_KEY); if (s) data = Object.assign({ trades: [] }, JSON.parse(s)); } catch(e) {}
+    if (!Array.isArray(data.trades)) data.trades = [];
+  }
+  function saveData() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); showStatus(); } catch(e) {} }
+
+  /* ── Helpers ── */
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  const parseDate = s => { const p = String(s).split('-').map(Number); return new Date(p[0], p[1]-1, p[2]); };
+  const daysBetween = (a, b) => Math.round((parseDate(b) - parseDate(a)) / DAY);
+  function todayISO() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+  const fmtD = s => { if (!s) return '—'; const p = String(s).split('-'); return `${Number(p[2])}. ${Number(p[1])}. ${p[0]}`; };
+  const fmtUsd = n => new Intl.NumberFormat('cs-CZ', { maximumFractionDigits: 2 }).format(n || 0) + ' $';
+  const fmtPct = p => (p > 0 ? '+' : '') + p.toFixed(1).replace('.', ',') + ' %';
+  const fmtSign = v => (v > 0 ? '+' : v < 0 ? '−' : '') + fmt(Math.abs(v));
+  const dniWord = n => n === 1 ? 'den' : (n >= 2 && n <= 4 ? 'dny' : 'dní');
+  const obchodWord = n => n === 1 ? 'obchod' : (n >= 2 && n <= 4 ? 'obchody' : 'obchodů');
+
+  const isClosed = t => t.sellPrice != null;
+  const totalDays = t => (t.from && t.to) ? Math.max(0, daysBetween(t.from, t.to)) : 0;
+  const daysLeftNow = t => t.to ? Math.max(0, daysBetween(todayISO(), t.to)) : 0;
+  const profit = t => (t.sellPrice || 0) - (t.premium || 0);
+  const profitPct = t => (t.premium > 0) ? profit(t) / t.premium * 100 : null;
+  const closedYear = t => String(t.closedAt || t.to || '').slice(0, 4);
+
+  function findTrade(id) { return data.trades.find(t => t.id === id); }
+
+  /* ── Hero ── */
+  function renderHero() {
+    const closed = data.trades.filter(isClosed);
+    const open = data.trades.filter(t => !isClosed(t));
+    const totProfit = closed.reduce((s, t) => s + profit(t), 0);
+    const totPremium = closed.reduce((s, t) => s + (t.premium || 0), 0);
+
+    const hero = document.getElementById('o-heroValue');
+    hero.textContent = closed.length ? fmtSign(totProfit) : '— Kč';
+    hero.className = 'opc-hero-value' + (closed.length ? (totProfit > 0 ? ' pos' : totProfit < 0 ? ' neg' : '') : '');
+
+    const ret = document.getElementById('o-statReturn');
+    if (totPremium > 0) {
+      const p = totProfit / totPremium * 100;
+      ret.textContent = fmtPct(p);
+      ret.className = 'opc-stat-value' + (p > 0 ? ' pos' : p < 0 ? ' neg' : '');
+    } else { ret.textContent = '—'; ret.className = 'opc-stat-value'; }
+
+    document.getElementById('o-statCount').textContent = `${closed.length} / ${open.length}`;
+
+    const win = document.getElementById('o-statWin');
+    if (closed.length) {
+      const wr = closed.filter(t => profit(t) > 0).length / closed.length * 100;
+      win.textContent = Math.round(wr) + ' %';
+      win.className = 'opc-stat-value' + (wr >= 50 ? ' pos' : ' neg');
+    } else { win.textContent = '—'; win.className = 'opc-stat-value'; }
+  }
+
+  /* ── Otevřené pozice ── */
+  const dleftClass = d => d > 30 ? 'ok' : d > 7 ? 'warn' : 'hot';
+  const CHEVRON = '<svg class="opc-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+
+  function renderOpen() {
+    const wrap = document.getElementById('o-openList');
+    const open = data.trades.filter(t => !isClosed(t)).sort((a, b) => String(a.to||'').localeCompare(String(b.to||'')));
+    if (!open.length) {
+      wrap.innerHTML = '<div class="card"><div class="opc-empty">Žádné otevřené pozice. Přidej obchod tlačítkem „+ Nový obchod“.</div></div>';
+      return;
+    }
+    wrap.innerHTML = open.map(t => {
+      const dl = daysLeftNow(t), td = totalDays(t);
+      const typePut = t.type === 'put';
+      const closeForm = closingId === t.id ? `
+        <div class="opc-close-form">
+          <div class="opc-close-title">Uzavření obchodu</div>
+          <div class="opc-fields">
+            <div class="opc-field"><label>Prodáno za (Kč)</label><input type="number" id="o-cSell" inputmode="numeric" min="0" placeholder="0"></div>
+            <div class="opc-field"><label>Dní do konce zbývalo</label><input type="number" id="o-cDays" inputmode="numeric" min="0" value="${dl}"></div>
+            <div class="opc-field"><label>Datum uzavření</label><input type="date" id="o-cDate" value="${todayISO()}"></div>
+          </div>
+          <div class="opc-actions">
+            <button class="btn btn-primary" onclick="OPCE.confirmClose('${t.id}')">Potvrdit</button>
+            <button class="btn" onclick="OPCE.expire('${t.id}')">Expirovala (0 Kč)</button>
+            <button class="btn" onclick="OPCE.cancelClose()">Zpět</button>
+          </div>
+        </div>` : `
+          <div class="opc-actions">
+            <button class="btn btn-primary" onclick="OPCE.startClose('${t.id}')">Uzavřít / expirace</button>
+            <button class="btn btn-danger" onclick="OPCE.del('${t.id}')">Smazat</button>
+          </div>`;
+      return `
+      <div class="opc-card${expanded[t.id] ? ' open' : ''}">
+        <div class="opc-card-header" onclick="OPCE.toggle('${t.id}')">
+          <div class="opc-card-info">
+            <span class="opc-type ${typePut ? 'put' : 'call'}">${typePut ? 'PUT' : 'CALL'}</span>
+            <span class="opc-ticker">${esc(t.ticker)}</span>
+            <span class="opc-card-sub">prémium ${fmt(t.premium || 0)}</span>
+          </div>
+          <span class="opc-dleft ${dleftClass(dl)}">zbývá ${dl} ${dniWord(dl)}</span>
+          ${CHEVRON}
+        </div>
+        <div class="opc-card-body">
+          <div class="opc-fields">
+            <div class="opc-field"><label>Ticker opce</label><input type="text" value="${esc(t.ticker)}" onchange="OPCE.upd('${t.id}','ticker',this.value)"></div>
+            <div class="opc-field"><label>Typ</label>
+              <div class="opc-seg">
+                <button type="button" class="call${typePut ? '' : ' active'}" onclick="OPCE.upd('${t.id}','type','call')">Call</button>
+                <button type="button" class="put${typePut ? ' active' : ''}" onclick="OPCE.upd('${t.id}','type','put')">Put</button>
+              </div>
+            </div>
+            <div class="opc-field"><label>Platí od</label><input type="date" value="${esc(t.from)}" onchange="OPCE.upd('${t.id}','from',this.value)"></div>
+            <div class="opc-field"><label>Expirace</label><input type="date" value="${esc(t.to)}" onchange="OPCE.upd('${t.id}','to',this.value)"></div>
+            <div class="opc-field"><label>Počet kusů</label><input type="number" inputmode="numeric" min="1" value="${t.qty || 1}" onchange="OPCE.upd('${t.id}','qty',this.value)"></div>
+            <div class="opc-field"><label>Strike ($)</label><input type="number" inputmode="decimal" step="0.01" min="0" value="${t.strike == null ? '' : t.strike}" onchange="OPCE.upd('${t.id}','strike',this.value)"></div>
+            <div class="opc-field"><label>Break even ($)</label><input type="number" inputmode="decimal" step="0.01" min="0" value="${t.breakEven == null ? '' : t.breakEven}" onchange="OPCE.upd('${t.id}','breakEven',this.value)"></div>
+            <div class="opc-field"><label>Prémium celkem (Kč)</label><input type="number" inputmode="numeric" min="0" value="${t.premium == null ? '' : t.premium}" onchange="OPCE.upd('${t.id}','premium',this.value)"></div>
+          </div>
+          <div class="opc-meta">Platnost ${fmtD(t.from)} – ${fmtD(t.to)} • celkem ${td} ${dniWord(td)} • zbývá ${dl} ${dniWord(dl)}</div>
+          ${closeForm}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  /* ── Uzavřené obchody ── */
+  function renderClosed() {
+    const wrap = document.getElementById('o-closedList');
+    const closed = data.trades.filter(isClosed).sort((a, b) => String(b.closedAt||'').localeCompare(String(a.closedAt||'')));
+    if (!closed.length) {
+      wrap.innerHTML = '<div class="card"><div class="opc-empty">Zatím žádné uzavřené obchody.</div></div>';
+      return;
+    }
+    wrap.innerHTML = closed.map(t => {
+      const g = profit(t), p = profitPct(t);
+      const cls = g > 0 ? 'pos' : g < 0 ? 'neg' : '';
+      const typePut = t.type === 'put';
+      const dlc = t.daysLeftAtClose || 0;
+      return `
+      <div class="opc-card${expanded[t.id] ? ' open' : ''}">
+        <div class="opc-card-header" onclick="OPCE.toggle('${t.id}')">
+          <div class="opc-card-info">
+            <span class="opc-type ${typePut ? 'put' : 'call'}">${typePut ? 'PUT' : 'CALL'}</span>
+            <span class="opc-ticker">${esc(t.ticker)}</span>
+            <span class="opc-card-sub">${fmtD(t.closedAt)}</span>
+          </div>
+          <span class="opc-profit ${cls}">${fmtSign(g)}${p == null ? '' : ` <small>(${fmtPct(p)})</small>`}</span>
+          ${CHEVRON}
+        </div>
+        <div class="opc-card-body">
+          <div class="opc-rows">
+            <div class="opc-row"><span class="opc-row-label">Platnost</span><span class="opc-row-value">${fmtD(t.from)} – ${fmtD(t.to)} (${totalDays(t)} ${dniWord(totalDays(t))})</span></div>
+            <div class="opc-row"><span class="opc-row-label">Uzavřeno</span><span class="opc-row-value">${fmtD(t.closedAt)} • ${dlc} ${dniWord(dlc)} před expirací</span></div>
+            <div class="opc-row"><span class="opc-row-label">Počet kusů</span><span class="opc-row-value">${t.qty || 1}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Strike</span><span class="opc-row-value">${fmtUsd(t.strike)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Break even</span><span class="opc-row-value">${fmtUsd(t.breakEven)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Prémium zaplaceno</span><span class="opc-row-value">${fmt(t.premium || 0)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Prodáno za</span><span class="opc-row-value">${fmt(t.sellPrice || 0)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Zisk / ztráta</span><span class="opc-row-value ${cls}">${fmtSign(g)}${p == null ? '' : ` (${fmtPct(p)})`}</span></div>
+          </div>
+          <div class="opc-actions">
+            <button class="btn" onclick="OPCE.reopen('${t.id}')">Znovu otevřít</button>
+            <button class="btn btn-danger" onclick="OPCE.del('${t.id}')">Smazat</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  /* ── Roční statistiky ── */
+  function renderYearly() {
+    const el = document.getElementById('o-yearly');
+    const closed = data.trades.filter(isClosed);
+    if (!closed.length) { el.style.display = 'none'; return; }
+    const byYear = {};
+    closed.forEach(t => {
+      const y = closedYear(t);
+      if (!byYear[y]) byYear[y] = { profit: 0, premium: 0, count: 0, wins: 0 };
+      byYear[y].profit += profit(t);
+      byYear[y].premium += (t.premium || 0);
+      byYear[y].count++;
+      if (profit(t) > 0) byYear[y].wins++;
+    });
+    el.style.display = '';
+    el.innerHTML = '<div class="opc-yearly-title">Roční návratnost</div>' + Object.keys(byYear).sort().map(y => {
+      const s = byYear[y];
+      const pct = s.premium > 0 ? s.profit / s.premium * 100 : null;
+      const cls = s.profit > 0 ? 'pos' : s.profit < 0 ? 'neg' : '';
+      return `<div class="opc-yearly-row">
+        <span class="opc-yearly-year">${y}<span class="opc-yearly-count">${s.count} ${obchodWord(s.count)} • úspěšnost ${Math.round(s.wins / s.count * 100)} %</span></span>
+        <span class="opc-yearly-vals"><span class="opc-yearly-gain ${cls}">${fmtSign(s.profit)}</span><span class="opc-yearly-pct ${cls}">${pct == null ? '—' : fmtPct(pct)}</span></span>
+      </div>`;
+    }).join('');
+  }
+
+  /* ── Formulář nového obchodu ── */
+  function updateFormDays() {
+    const f = document.getElementById('o-fFrom').value, t = document.getElementById('o-fTo').value;
+    const d = (f && t) ? daysBetween(f, t) : null;
+    document.getElementById('o-fDays').textContent = (d != null && d >= 0) ? `Délka opce: ${d} ${dniWord(d)}` : 'Délka opce: —';
+  }
+
+  function syncFormType() {
+    document.querySelectorAll('#o-fType button').forEach(b => b.classList.toggle('active', b.dataset.type === formType));
+  }
+
+  function toggleForm(show) {
+    document.getElementById('o-form').style.display = show ? '' : 'none';
+    if (!show) return;
+    document.getElementById('o-fTicker').value = '';
+    formType = 'call'; syncFormType();
+    document.getElementById('o-fFrom').value = todayISO();
+    document.getElementById('o-fTo').value = '';
+    document.getElementById('o-fQty').value = 1;
+    document.getElementById('o-fStrike').value = '';
+    document.getElementById('o-fBE').value = '';
+    document.getElementById('o-fPremium').value = '';
+    updateFormDays();
+    document.getElementById('o-fTicker').focus();
+  }
+
+  function saveNew() {
+    const ticker = document.getElementById('o-fTicker').value.trim().toUpperCase();
+    const from = document.getElementById('o-fFrom').value;
+    const to = document.getElementById('o-fTo').value;
+    const qty = Math.max(1, parseInt(document.getElementById('o-fQty').value, 10) || 1);
+    const strike = parseFloat(document.getElementById('o-fStrike').value) || 0;
+    const breakEven = parseFloat(document.getElementById('o-fBE').value) || 0;
+    const premium = parseFloat(document.getElementById('o-fPremium').value) || 0;
+    if (!ticker) { alert('Vyplň ticker opce.'); return; }
+    if (!from || !to) { alert('Vyplň platnost od a datum expirace.'); return; }
+    if (daysBetween(from, to) <= 0) { alert('Expirace musí být po datu nákupu.'); return; }
+    if (premium <= 0) { alert('Vyplň zaplacené prémium v Kč.'); return; }
+    data.trades.push({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+      ticker, type: formType, from, to, qty, strike, breakEven, premium,
+      sellPrice: null, daysLeftAtClose: null, closedAt: null,
+    });
+    saveData();
+    toggleForm(false);
+    refresh();
+  }
+
+  /* ── Akce na obchodech ── */
+  function toggle(id) {
+    expanded[id] = !expanded[id];
+    if (!expanded[id] && closingId === id) closingId = null;
+    renderOpen(); renderClosed();
+  }
+
+  function upd(id, field, value) {
+    const t = findTrade(id); if (!t) return;
+    if (field === 'ticker') t.ticker = String(value).trim().toUpperCase();
+    else if (field === 'type') t.type = value === 'put' ? 'put' : 'call';
+    else if (field === 'from' || field === 'to') { if (value) t[field] = value; }
+    else if (field === 'qty') t.qty = Math.max(1, parseInt(value, 10) || 1);
+    else t[field] = parseFloat(value) || 0;
+    saveData(); refresh();
+  }
+
+  function startClose(id) {
+    closingId = id; expanded[id] = true;
+    renderOpen();
+    const el = document.getElementById('o-cSell');
+    if (el) el.focus();
+  }
+  function cancelClose() { closingId = null; renderOpen(); }
+
+  function confirmClose(id) {
+    const t = findTrade(id); if (!t) return;
+    const sellRaw = document.getElementById('o-cSell').value;
+    const sell = parseFloat(sellRaw);
+    if (sellRaw === '' || isNaN(sell) || sell < 0) { alert('Vyplň prodejní cenu v Kč (0 = expirace bez hodnoty).'); return; }
+    t.sellPrice = sell;
+    t.daysLeftAtClose = Math.max(0, parseInt(document.getElementById('o-cDays').value, 10) || 0);
+    t.closedAt = document.getElementById('o-cDate').value || todayISO();
+    closingId = null; expanded[id] = false;
+    saveData(); refresh();
+  }
+
+  function expire(id) {
+    const t = findTrade(id); if (!t) return;
+    t.sellPrice = 0;
+    t.daysLeftAtClose = 0;
+    t.closedAt = (t.to && t.to <= todayISO()) ? t.to : todayISO();
+    closingId = null; expanded[id] = false;
+    saveData(); refresh();
+  }
+
+  function reopen(id) {
+    const t = findTrade(id); if (!t) return;
+    t.sellPrice = null; t.daysLeftAtClose = null; t.closedAt = null;
+    expanded[id] = true;
+    saveData(); refresh();
+  }
+
+  function del(id) {
+    const t = findTrade(id); if (!t) return;
+    showDialog(`Smazat obchod ${t.ticker}?`, 'Obchod bude trvale odstraněn. Tato akce je nevratná.', () => {
+      data.trades = data.trades.filter(x => x.id !== id);
+      delete expanded[id];
+      if (closingId === id) closingId = null;
+      saveData(); refresh();
+    });
+  }
+
+  function refresh() { renderHero(); renderOpen(); renderClosed(); renderYearly(); }
+
+  function setupEvents() {
+    document.getElementById('o-btnAdd').addEventListener('click', () => {
+      toggleForm(document.getElementById('o-form').style.display === 'none');
+    });
+    document.getElementById('o-fSave').addEventListener('click', saveNew);
+    document.getElementById('o-fCancel').addEventListener('click', () => toggleForm(false));
+    document.getElementById('o-fFrom').addEventListener('change', updateFormDays);
+    document.getElementById('o-fTo').addEventListener('change', updateFormDays);
+    document.querySelectorAll('#o-fType button').forEach(b => {
+      b.addEventListener('click', () => { formType = b.dataset.type; syncFormType(); });
+    });
+  }
+
+  function init() { initData(); setupEvents(); refresh(); }
+
+  return { init, refresh, toggle, upd, startClose, cancelClose, confirmClose, expire, reopen, del };
+})();
+
+/* ════════════════════════════════════════════
    BACKUP MODULE — Export/Import JSON
 ════════════════════════════════════════════ */
 const BACKUP = (() => {
@@ -3240,6 +3728,7 @@ const BACKUP = (() => {
     vydaje:    'vydaje_app_data',
     investice: 'fin_investice_v1',
     networth:  'networth_app_data',
+    opce:      'opce_app_data',
   };
   const META_KEY = 'backup_meta';
   const REVERT_KEY = '_backup_before_import';
@@ -3407,6 +3896,7 @@ PODNIKANI.init();
 VYDAJE.init();
 INVESTICE.init();
 NETWORTH.init();
+OPCE.init();
 BACKUP.init();
 PRIJMY.scheduleCharts();
 
