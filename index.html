@@ -1260,23 +1260,31 @@
     <div id="opc-sub-vypis" style="display:none">
 
       <div class="card">
+        <div class="opc-fields" style="grid-template-columns:1fr 1fr;padding-top:0">
+          <div class="opc-field"><label>Kurz USD → Kč</label><input type="number" id="vy-rateUSD" inputmode="decimal" step="0.001" min="0" placeholder="0"></div>
+          <div class="opc-field"><label>Kurz EUR → Kč</label><input type="number" id="vy-rateEUR" inputmode="decimal" step="0.001" min="0" placeholder="0"></div>
+        </div>
+      </div>
+
+      <div class="card">
         <div class="opc-hero">
-          <div class="opc-hero-label">Celková hodnota účtu pro výpis</div>
+          <div class="opc-hero-label">Celková hodnota účtu (hotovost + portfolio)</div>
           <div class="opc-hero-value" id="vy-heroValue">— Kč</div>
           <div class="opc-hero-stats">
             <div class="opc-stat">
-              <div class="opc-stat-label">Vklady − výběry</div>
-              <div class="opc-stat-value" id="vy-statDeposited">—</div>
+              <div class="opc-stat-label">Vklad</div>
+              <div class="opc-stat-value" id="vy-statDeposit">—</div>
             </div>
             <div class="opc-stat">
-              <div class="opc-stat-label">Z prémií</div>
-              <div class="opc-stat-value" id="vy-statPremiums">—</div>
+              <div class="opc-stat-label">Zisk</div>
+              <div class="opc-stat-value" id="vy-statProfit">—</div>
             </div>
             <div class="opc-stat">
-              <div class="opc-stat-label">Počet výpisů</div>
-              <div class="opc-stat-value" id="vy-statCount">—</div>
+              <div class="opc-stat-label">Otevřené pozice</div>
+              <div class="opc-stat-value" id="vy-statPositions">—</div>
             </div>
           </div>
+          <div class="opc-rows" id="vy-currencyBreakdown" style="margin-top:14px"></div>
         </div>
       </div>
 
@@ -1305,7 +1313,6 @@
               <option value="EUR">EUR</option>
             </select>
           </div>
-          <div class="opc-field" id="vy-cRateField" style="display:none"><label>Kurz (Kč za 1 jednotku)</label><input type="number" id="vy-cRate" inputmode="decimal" step="0.001" min="0" placeholder="0"></div>
           <div class="opc-field"><label>Poznámka (volitelné)</label><input type="text" id="vy-cNote" placeholder=""></div>
         </div>
         <div class="opc-meta" id="vy-cPreview"></div>
@@ -1318,6 +1325,12 @@
       <div class="card" id="vy-writeForm" style="display:none">
         <div class="opc-fields">
           <div class="opc-field"><label>Ticker akcie</label><input type="text" id="vy-wTicker" placeholder="AAPL" autocapitalize="characters"></div>
+          <div class="opc-field"><label>Typ</label>
+            <div class="opc-seg" id="vy-wType">
+              <button type="button" class="put active" data-type="put">Put</button>
+              <button type="button" class="call" data-type="call">Call</button>
+            </div>
+          </div>
           <div class="opc-field"><label>Strike cena</label><input type="number" id="vy-wStrike" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
           <div class="opc-field"><label>Dní do expirace</label><input type="number" id="vy-wDays" inputmode="numeric" min="1" placeholder="0"></div>
           <div class="opc-field"><label>Prémium na 1 akcii</label><input type="number" id="vy-wPremium" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
@@ -1329,7 +1342,6 @@
               <option value="EUR">EUR</option>
             </select>
           </div>
-          <div class="opc-field" id="vy-wRateField"><label>Kurz (Kč za 1 jednotku)</label><input type="number" id="vy-wRate" inputmode="decimal" step="0.001" min="0" placeholder="0"></div>
           <div class="opc-field"><label>Datum</label><input type="date" id="vy-wDate"></div>
         </div>
         <div class="opc-meta" id="vy-wPreview">Roční zhodnocení: —</div>
@@ -1343,6 +1355,11 @@
         <div class="app-header"><span class="app-title">Výpisy</span></div>
       </div>
       <div id="vy-writeList"></div>
+
+      <div class="card" style="margin:16px 0 8px">
+        <div class="app-header"><span class="app-title">Portfolio z uplatněných opcí</span></div>
+      </div>
+      <div id="vy-portfolioList"></div>
 
       <div class="card" style="margin:16px 0 8px">
         <div class="app-header"><span class="app-title">Historie vkladů a výběrů</span></div>
@@ -3850,14 +3867,25 @@ const OPCE = (() => {
 ════════════════════════════════════════════ */
 const VYPIS = (() => {
   const STORAGE_KEY = 'opce_vypis_data';
-  let data = { moves: [], writes: [] };
+  const CURRENCIES = ['CZK', 'USD', 'EUR'];
+  let data = { rates: { USD: 0, EUR: 0 }, moves: [], writes: [], portfolio: [] };
   const expanded = {};
   let cType = 'in';
+  let wType = 'put';
+  let assigningId = null;
+  let sellingId = null;
 
   function initData() {
-    try { const s = localStorage.getItem(STORAGE_KEY); if (s) data = Object.assign({ moves: [], writes: [] }, JSON.parse(s)); } catch(e) {}
+    try {
+      const s = localStorage.getItem(STORAGE_KEY);
+      if (s) data = Object.assign({ rates: { USD: 0, EUR: 0 }, moves: [], writes: [], portfolio: [] }, JSON.parse(s));
+    } catch(e) {}
+    if (!data.rates || typeof data.rates !== 'object') data.rates = {};
+    if (!(data.rates.USD > 0)) data.rates.USD = data.rates.USD || 0;
+    if (!(data.rates.EUR > 0)) data.rates.EUR = data.rates.EUR || 0;
     if (!Array.isArray(data.moves)) data.moves = [];
     if (!Array.isArray(data.writes)) data.writes = [];
+    if (!Array.isArray(data.portfolio)) data.portfolio = [];
   }
   function saveData() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); showStatus(); } catch(e) {} }
 
@@ -3865,9 +3893,12 @@ const VYPIS = (() => {
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   function todayISO() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
   const fmtD = s => { if (!s) return '—'; const p = String(s).split('-'); return `${Number(p[2])}. ${Number(p[1])}. ${p[0]}`; };
-  const fmtCur = (n, cur) => new Intl.NumberFormat('cs-CZ', { maximumFractionDigits: 2 }).format(n || 0) + ' ' + cur;
+  const fmtCur = (n, cur) => cur === 'CZK' ? fmt(n) : new Intl.NumberFormat('cs-CZ', { maximumFractionDigits: 2 }).format(n || 0) + ' ' + cur;
+  const fmtSign = n => (n > 0 ? '+' : n < 0 ? '−' : '') + fmt(Math.abs(n));
+  const fmtSignCur = (n, cur) => (n > 0 ? '+' : n < 0 ? '−' : '') + fmtCur(Math.abs(n), cur);
   const dniWord = n => n === 1 ? 'den' : (n >= 2 && n <= 4 ? 'dny' : 'dní');
   const CHEVRON = '<svg class="opc-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+  const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
   // Roční zhodnocení: (prémium × 100 / strike / dní do expirace) × 365
   function annualPct(premium, strike, days) {
@@ -3877,17 +3908,60 @@ const VYPIS = (() => {
   const fmtPct = p => (p > 0 ? '+' : '') + p.toFixed(1).replace('.', ',') + ' %';
 
   function findWrite(id) { return data.writes.find(w => w.id === id); }
+  function findPos(id) { return data.portfolio.find(p => p.id === id); }
+  function rateOf(cur) { return cur === 'CZK' ? 1 : (data.rates[cur] || 0); }
 
-  /* ── Hero / zůstatek účtu ── */
-  const movesSignedCZK = () => data.moves.reduce((s, m) => s + (m.type === 'out' ? -m.amountCZK : m.amountCZK), 0);
-  const premiumsCZK = () => data.writes.reduce((s, w) => s + w.premiumCZK, 0);
-  const balanceCZK = () => movesSignedCZK() + premiumsCZK();
+  /* ── Výpočty zůstatku (hotovost + portfolio), po měnách ── */
+  function cashByCurrency() {
+    const bal = { CZK: 0, USD: 0, EUR: 0 };
+    data.moves.forEach(m => { bal[m.currency] += (m.type === 'out' ? -m.amount : m.amount); });
+    data.writes.forEach(w => {
+      bal[w.currency] += w.premium * 100 * w.qty;
+      if (w.status === 'assigned') {
+        if (w.type === 'call') bal[w.currency] += w.strike * 100 * w.qty;
+        else bal[w.currency] -= w.strike * 100 * w.qty;
+      }
+    });
+    data.portfolio.forEach(p => {
+      if (p.status === 'closed' && !p.closedByWriteId) bal[p.currency] += (p.closePrice || 0) * p.qty;
+    });
+    return bal;
+  }
+  function portfolioValueByCurrency() {
+    const v = { CZK: 0, USD: 0, EUR: 0 };
+    data.portfolio.forEach(p => { if (p.status === 'open') v[p.currency] += p.currentPrice * p.qty; });
+    return v;
+  }
+  function toCZK(byCur) { return byCur.CZK + byCur.USD * rateOf('USD') + byCur.EUR * rateOf('EUR'); }
+  function depositedCZK() {
+    const bal = { CZK: 0, USD: 0, EUR: 0 };
+    data.moves.forEach(m => { bal[m.currency] += (m.type === 'out' ? -m.amount : m.amount); });
+    return toCZK(bal);
+  }
+  function totalValueCZK() {
+    const cash = cashByCurrency(), port = portfolioValueByCurrency();
+    return toCZK({ CZK: cash.CZK + port.CZK, USD: cash.USD + port.USD, EUR: cash.EUR + port.EUR });
+  }
 
+  /* ── Hero ── */
   function renderHero() {
-    document.getElementById('vy-heroValue').textContent = fmt(balanceCZK());
-    document.getElementById('vy-statDeposited').textContent = fmt(movesSignedCZK());
-    document.getElementById('vy-statPremiums').textContent = fmt(premiumsCZK());
-    document.getElementById('vy-statCount').textContent = String(data.writes.length);
+    const cash = cashByCurrency(), port = portfolioValueByCurrency();
+    const totalCZK = totalValueCZK(), depCZK = depositedCZK();
+    const zisk = totalCZK - depCZK;
+
+    document.getElementById('vy-heroValue').textContent = fmt(totalCZK);
+    document.getElementById('vy-statDeposit').textContent = fmt(depCZK);
+    const ziskEl = document.getElementById('vy-statProfit');
+    ziskEl.textContent = fmtSign(zisk);
+    ziskEl.className = 'opc-stat-value' + (zisk > 0 ? ' pos' : zisk < 0 ? ' neg' : '');
+    document.getElementById('vy-statPositions').textContent = String(data.portfolio.filter(p => p.status === 'open').length);
+
+    document.getElementById('vy-currencyBreakdown').innerHTML = CURRENCIES.map(cur => {
+      const cashV = cash[cur] || 0, portV = port[cur] || 0, total = cashV + portV;
+      const detail = portV ? ` (hotovost ${fmtCur(cashV, cur)} + akcie ${fmtCur(portV, cur)})` : '';
+      const czkEq = cur === 'CZK' ? null : total * rateOf(cur);
+      return `<div class="opc-row"><span class="opc-row-label">${cur}${detail}</span><span class="opc-row-value">${fmtCur(total, cur)}${czkEq != null ? ` <small style="opacity:.7">(${fmt(czkEq)})</small>` : ''}</span></div>`;
+    }).join('');
   }
 
   /* ── Seznam výpisů ── */
@@ -3901,12 +3975,64 @@ const VYPIS = (() => {
     wrap.innerHTML = list.map(w => {
       const ap = w.annualPct;
       const cls = ap == null ? '' : (ap >= 0 ? 'pos' : 'neg');
+      const isPut = w.type !== 'call';
+      const assigned = w.status === 'assigned';
+
+      let actionBlock;
+      if (assigningId === w.id) {
+        if (isPut) {
+          actionBlock = `
+          <div class="opc-close-form">
+            <div class="opc-close-title">Potvrdit uplatnění (assignment)</div>
+            <div class="opc-meta">Do portfolia přibude ${w.qty * 100} ks ${esc(w.ticker)} za ${fmtCur(w.strike, w.currency)} / ks.</div>
+            <div class="opc-actions">
+              <button class="btn btn-primary" onclick="VYPIS.confirmAssign('${w.id}')">Potvrdit uplatnění</button>
+              <button class="btn" onclick="VYPIS.cancelAssign()">Zpět</button>
+            </div>
+          </div>`;
+        } else {
+          const eligible = data.portfolio.filter(p => p.status === 'open' && p.ticker === w.ticker && p.qty === w.qty * 100);
+          actionBlock = !eligible.length ? `
+          <div class="opc-close-form">
+            <div class="opc-close-title">Uplatnění (assignment)</div>
+            <div class="opc-meta">V portfoliu nemáš otevřenou pozici ${esc(w.ticker)} s přesně ${w.qty * 100} ks, kterou by šlo touto call opcí uzavřít.</div>
+            <div class="opc-actions"><button class="btn" onclick="VYPIS.cancelAssign()">Zpět</button></div>
+          </div>` : `
+          <div class="opc-close-form">
+            <div class="opc-close-title">Potvrdit uplatnění (assignment)</div>
+            <div class="opc-fields">
+              <div class="opc-field"><label>Pozice v portfoliu k uzavření</label>
+                <select id="vy-assignLot">
+                  ${eligible.map(p => `<option value="${p.id}">${esc(p.ticker)} • ${p.qty} ks • nákup ${fmtCur(p.costBasis, p.currency)}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+            <div class="opc-meta">Akcie se prodají za ${fmtCur(w.strike, w.currency)} / ks, hotovost se zvýší.</div>
+            <div class="opc-actions">
+              <button class="btn btn-primary" onclick="VYPIS.confirmAssign('${w.id}')">Potvrdit uplatnění</button>
+              <button class="btn" onclick="VYPIS.cancelAssign()">Zpět</button>
+            </div>
+          </div>`;
+        }
+      } else if (assigned) {
+        actionBlock = `
+          <div class="opc-meta">Uplatněno ${fmtD(w.assignedDate)}</div>
+          <div class="opc-actions"><button class="btn btn-danger" onclick="VYPIS.delWrite('${w.id}')">Smazat</button></div>`;
+      } else {
+        actionBlock = `
+          <div class="opc-actions">
+            <button class="btn btn-primary" onclick="VYPIS.startAssign('${w.id}')">Uplatnit (assignment)</button>
+            <button class="btn btn-danger" onclick="VYPIS.delWrite('${w.id}')">Smazat</button>
+          </div>`;
+      }
+
       return `
       <div class="opc-card${expanded[w.id] ? ' open' : ''}">
         <div class="opc-card-header" onclick="VYPIS.toggle('${w.id}')">
           <div class="opc-card-info">
+            <span class="opc-type ${isPut ? 'put' : 'call'}">${isPut ? 'PUT' : 'CALL'}</span>
             <span class="opc-ticker">${esc(w.ticker)}</span>
-            <span class="opc-card-sub">strike ${fmtCur(w.strike, w.currency)} • ${w.days} ${dniWord(w.days)}</span>
+            <span class="opc-card-sub">strike ${fmtCur(w.strike, w.currency)} • ${w.days} ${dniWord(w.days)}${assigned ? ' • uplatněno' : ''}</span>
           </div>
           <span class="opc-profit ${cls}">${ap == null ? '—' : fmtPct(ap) + ' p.a.'}</span>
           ${CHEVRON}
@@ -3918,16 +4044,81 @@ const VYPIS = (() => {
             <div class="opc-row"><span class="opc-row-label">Dní do expirace</span><span class="opc-row-value">${w.days} ${dniWord(w.days)}</span></div>
             <div class="opc-row"><span class="opc-row-label">Prémium na akcii</span><span class="opc-row-value">${fmtCur(w.premium, w.currency)}</span></div>
             <div class="opc-row"><span class="opc-row-label">Počet kontraktů</span><span class="opc-row-value">${w.qty || 1}</span></div>
-            <div class="opc-row"><span class="opc-row-label">Kurz</span><span class="opc-row-value">${w.currency === 'CZK' ? '—' : (w.rate + ' Kč')}</span></div>
-            <div class="opc-row"><span class="opc-row-label">Připsané prémium</span><span class="opc-row-value pos">${fmt(w.premiumCZK)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Prémium celkem</span><span class="opc-row-value pos">${fmtCur(w.premium * 100 * w.qty, w.currency)}</span></div>
             <div class="opc-row"><span class="opc-row-label">Roční zhodnocení</span><span class="opc-row-value ${cls}">${ap == null ? '—' : fmtPct(ap)}</span></div>
           </div>
-          <div class="opc-actions">
-            <button class="btn btn-danger" onclick="VYPIS.delWrite('${w.id}')">Smazat</button>
-          </div>
+          ${actionBlock}
         </div>
       </div>`;
     }).join('');
+  }
+
+  /* ── Portfolio z uplatněných opcí ── */
+  function renderPortfolio() {
+    const wrap = document.getElementById('vy-portfolioList');
+    const open = data.portfolio.filter(p => p.status === 'open').sort((a,b) => String(b.openDate||'').localeCompare(String(a.openDate||'')));
+    const closed = data.portfolio.filter(p => p.status === 'closed').sort((a,b) => String(b.closeDate||'').localeCompare(String(a.closeDate||'')));
+    if (!open.length && !closed.length) {
+      wrap.innerHTML = '<div class="card"><div class="opc-empty">Zatím žádné akcie v portfoliu. Přibudou po uplatnění (assignmentu) vypsané opce.</div></div>';
+      return;
+    }
+    const openHtml = open.map(p => {
+      const pl = (p.currentPrice - p.costBasis) * p.qty;
+      const cls = pl > 0 ? 'pos' : pl < 0 ? 'neg' : '';
+      const key = 'p-' + p.id;
+      const sellForm = sellingId === p.id ? `
+        <div class="opc-close-form">
+          <div class="opc-close-title">Prodat akcie</div>
+          <div class="opc-fields">
+            <div class="opc-field"><label>Prodejní cena / ks</label><input type="number" id="vy-pSellPrice" inputmode="decimal" step="0.01" min="0" value="${p.currentPrice}"></div>
+            <div class="opc-field"><label>Datum prodeje</label><input type="date" id="vy-pSellDate" value="${todayISO()}"></div>
+          </div>
+          <div class="opc-actions">
+            <button class="btn btn-primary" onclick="VYPIS.confirmSell('${p.id}')">Potvrdit prodej</button>
+            <button class="btn" onclick="VYPIS.cancelSell()">Zpět</button>
+          </div>
+        </div>` : `
+        <div class="opc-actions">
+          <button class="btn" onclick="VYPIS.startSell('${p.id}')">Prodat akcie</button>
+          <button class="btn btn-danger" onclick="VYPIS.delPos('${p.id}')">Smazat</button>
+        </div>`;
+      return `
+      <div class="opc-card${expanded[key] ? ' open' : ''}">
+        <div class="opc-card-header" onclick="VYPIS.togglePos('${p.id}')">
+          <div class="opc-card-info">
+            <span class="opc-ticker">${esc(p.ticker)}</span>
+            <span class="opc-card-sub">${p.qty} ks • nákup ${fmtCur(p.costBasis, p.currency)}</span>
+          </div>
+          <span class="opc-profit ${cls}">${fmtSignCur(pl, p.currency)}</span>
+          ${CHEVRON}
+        </div>
+        <div class="opc-card-body">
+          <div class="opc-fields">
+            <div class="opc-field"><label>Aktuální cena / ks</label><input type="number" inputmode="decimal" step="0.01" min="0" value="${p.currentPrice}" onchange="VYPIS.updPrice('${p.id}', this.value)"></div>
+          </div>
+          <div class="opc-rows">
+            <div class="opc-row"><span class="opc-row-label">Datum (assignment)</span><span class="opc-row-value">${fmtD(p.openDate)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Počet kusů</span><span class="opc-row-value">${p.qty}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Nákupní cena (strike)</span><span class="opc-row-value">${fmtCur(p.costBasis, p.currency)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Aktuální hodnota</span><span class="opc-row-value">${fmtCur(p.currentPrice * p.qty, p.currency)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Nerealizovaný zisk/ztráta</span><span class="opc-row-value ${cls}">${fmtSignCur(pl, p.currency)}</span></div>
+          </div>
+          ${sellForm}
+        </div>
+      </div>`;
+    }).join('');
+    const closedHtml = !closed.length ? '' : `
+      <div class="card" style="margin-top:8px">
+        <div class="opc-yearly-title">Uzavřené pozice</div>
+        <div class="opc-rows">
+          ${closed.map(p => {
+            const pl = (p.closePrice - p.costBasis) * p.qty;
+            const cls = pl > 0 ? 'pos' : pl < 0 ? 'neg' : '';
+            return `<div class="opc-row"><span class="opc-row-label">${esc(p.ticker)} • ${fmtD(p.closeDate)}</span><span class="opc-row-value ${cls}">${fmtSignCur(pl, p.currency)}</span></div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    wrap.innerHTML = openHtml + closedHtml;
   }
 
   /* ── Historie vkladů / výběrů ── */
@@ -3940,31 +4131,38 @@ const VYPIS = (() => {
     }
     wrap.innerHTML = '<div class="card"><div class="opc-rows" style="padding-top:4px">' + list.map(m => {
       const isOut = m.type === 'out';
-      const fx = m.currency !== 'CZK' ? ` <small style="opacity:.7">(${fmt(m.amountCZK)})</small>` : '';
       return `<div class="opc-row">
         <span class="opc-row-label">${fmtD(m.date)} • ${isOut ? 'Výběr' : 'Vklad'}${m.note ? ' — ' + esc(m.note) : ''}</span>
-        <span class="opc-row-value ${isOut ? 'neg' : 'pos'}">${isOut ? '−' : '+'}${fmtCur(m.amount, m.currency)}${fx} <button class="btn btn-danger" style="padding:3px 9px;font-size:11px" onclick="VYPIS.delMove('${m.id}')">Smazat</button></span>
+        <span class="opc-row-value ${isOut ? 'neg' : 'pos'}">${isOut ? '−' : '+'}${fmtCur(m.amount, m.currency)} <button class="btn btn-danger" style="padding:3px 9px;font-size:11px" onclick="VYPIS.delMove('${m.id}')">Smazat</button></span>
       </div>`;
     }).join('') + '</div></div>';
   }
 
-  function refresh() { renderHero(); renderWrites(); renderMoves(); }
+  function refresh() { renderHero(); renderWrites(); renderPortfolio(); renderMoves(); }
+
+  /* ── Kurzy ── */
+  function updateRateInputs() {
+    document.getElementById('vy-rateUSD').value = data.rates.USD || '';
+    document.getElementById('vy-rateEUR').value = data.rates.EUR || '';
+  }
+  function saveRates() {
+    data.rates.USD = parseFloat(document.getElementById('vy-rateUSD').value) || 0;
+    data.rates.EUR = parseFloat(document.getElementById('vy-rateEUR').value) || 0;
+    saveData();
+    renderHero();
+  }
 
   /* ── Formulář: přidat peníze ── */
   function syncCType() {
     document.querySelectorAll('#vy-cType button').forEach(b => b.classList.toggle('active', b.dataset.type === cType));
   }
-  function updateCashRateVisibility() {
-    const isCzk = document.getElementById('vy-cCurrency').value === 'CZK';
-    document.getElementById('vy-cRateField').style.display = isCzk ? 'none' : '';
-  }
   function updateCashPreview() {
     const amount = parseFloat(document.getElementById('vy-cAmount').value) || 0;
     const currency = document.getElementById('vy-cCurrency').value;
-    const rate = currency === 'CZK' ? 1 : parseFloat(document.getElementById('vy-cRate').value);
     const el = document.getElementById('vy-cPreview');
     if (currency === 'CZK' || !amount) { el.textContent = ''; return; }
-    el.textContent = (rate > 0) ? `≈ ${fmt(amount * rate)}` : 'Vyplň kurz pro přepočet na Kč.';
+    const rate = rateOf(currency);
+    el.textContent = rate > 0 ? `≈ ${fmt(amount * rate)}` : 'Nastav kurz nahoře pro přepočet na Kč.';
   }
   function toggleCashForm(show) {
     document.getElementById('vy-cashForm').style.display = show ? '' : 'none';
@@ -3974,9 +4172,7 @@ const VYPIS = (() => {
     document.getElementById('vy-cDate').value = todayISO();
     document.getElementById('vy-cAmount').value = '';
     document.getElementById('vy-cCurrency').value = 'CZK';
-    document.getElementById('vy-cRate').value = '';
     document.getElementById('vy-cNote').value = '';
-    updateCashRateVisibility();
     updateCashPreview();
     document.getElementById('vy-cAmount').focus();
   }
@@ -3985,23 +4181,17 @@ const VYPIS = (() => {
     const date = document.getElementById('vy-cDate').value || todayISO();
     const amount = parseFloat(document.getElementById('vy-cAmount').value);
     const currency = document.getElementById('vy-cCurrency').value;
-    const rate = currency === 'CZK' ? 1 : parseFloat(document.getElementById('vy-cRate').value);
     const note = document.getElementById('vy-cNote').value.trim();
     if (!(amount > 0)) { alert('Vyplň částku.'); return; }
-    if (currency !== 'CZK' && !(rate > 0)) { alert('Vyplň kurz pro přepočet na Kč.'); return; }
-    data.moves.push({
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-      date, type, amount, currency, rate, amountCZK: amount * rate, note,
-    });
+    data.moves.push({ id: newId(), date, type, amount, currency, note });
     saveData();
     toggleCashForm(false);
     refresh();
   }
 
   /* ── Formulář: přidat výpis ── */
-  function updateWriteRateVisibility() {
-    const isCzk = document.getElementById('vy-wCurrency').value === 'CZK';
-    document.getElementById('vy-wRateField').style.display = isCzk ? 'none' : '';
+  function syncWType() {
+    document.querySelectorAll('#vy-wType button').forEach(b => b.classList.toggle('active', b.dataset.type === wType));
   }
   function updateWritePreview() {
     const strike = parseFloat(document.getElementById('vy-wStrike').value) || 0;
@@ -4009,57 +4199,77 @@ const VYPIS = (() => {
     const premium = parseFloat(document.getElementById('vy-wPremium').value) || 0;
     const qty = Math.max(1, parseInt(document.getElementById('vy-wQty').value, 10) || 1);
     const currency = document.getElementById('vy-wCurrency').value;
-    const rate = currency === 'CZK' ? 1 : parseFloat(document.getElementById('vy-wRate').value);
-    const el = document.getElementById('vy-wPreview');
     const ap = annualPct(premium, strike, days);
-    const apText = 'Roční zhodnocení: ' + (ap == null ? '—' : fmtPct(ap));
-    if (!premium || currency === 'CZK') { el.textContent = apText; return; }
-    if (!(rate > 0)) { el.textContent = apText + ' • Vyplň kurz pro přepočet prémia na Kč.'; return; }
-    el.textContent = apText + ` • Připíše se ${fmt(premium * 100 * qty * rate)}`;
+    let text = 'Roční zhodnocení: ' + (ap == null ? '—' : fmtPct(ap));
+    if (premium > 0) {
+      const totalNative = premium * 100 * qty;
+      text += ` • Prémium celkem ${fmtCur(totalNative, currency)}`;
+      const rate = rateOf(currency);
+      if (currency !== 'CZK' && rate > 0) text += ` (≈ ${fmt(totalNative * rate)})`;
+    }
+    document.getElementById('vy-wPreview').textContent = text;
   }
   function toggleWriteForm(show) {
     document.getElementById('vy-writeForm').style.display = show ? '' : 'none';
     if (!show) return;
     toggleCashForm(false);
+    wType = 'put'; syncWType();
     document.getElementById('vy-wTicker').value = '';
     document.getElementById('vy-wStrike').value = '';
     document.getElementById('vy-wDays').value = '';
     document.getElementById('vy-wPremium').value = '';
     document.getElementById('vy-wQty').value = 1;
     document.getElementById('vy-wCurrency').value = 'USD';
-    document.getElementById('vy-wRate').value = '';
     document.getElementById('vy-wDate').value = todayISO();
-    updateWriteRateVisibility();
     updateWritePreview();
     document.getElementById('vy-wTicker').focus();
   }
   function saveWrite() {
     const ticker = document.getElementById('vy-wTicker').value.trim().toUpperCase();
+    const type = wType;
     const strike = parseFloat(document.getElementById('vy-wStrike').value);
     const days = parseInt(document.getElementById('vy-wDays').value, 10);
     const premium = parseFloat(document.getElementById('vy-wPremium').value);
     const qty = Math.max(1, parseInt(document.getElementById('vy-wQty').value, 10) || 1);
     const currency = document.getElementById('vy-wCurrency').value;
-    const rate = currency === 'CZK' ? 1 : parseFloat(document.getElementById('vy-wRate').value);
     const date = document.getElementById('vy-wDate').value || todayISO();
     if (!ticker) { alert('Vyplň ticker akcie.'); return; }
     if (!(strike > 0)) { alert('Vyplň strike cenu.'); return; }
     if (!(days > 0)) { alert('Vyplň počet dní do expirace.'); return; }
     if (!(premium > 0)) { alert('Vyplň prémium na 1 akcii.'); return; }
-    if (currency !== 'CZK' && !(rate > 0)) { alert('Vyplň kurz pro přepočet na Kč.'); return; }
     data.writes.push({
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-      date, ticker, strike, days, premium, qty, currency, rate,
-      premiumCZK: premium * 100 * qty * rate,
-      annualPct: annualPct(premium, strike, days),
+      id: newId(), date, ticker, type, strike, days, premium, qty, currency,
+      status: 'open', annualPct: annualPct(premium, strike, days),
     });
     saveData();
     toggleWriteForm(false);
     refresh();
   }
 
-  /* ── Akce ── */
+  /* ── Akce: výpisy / assignment ── */
   function toggle(id) { expanded[id] = !expanded[id]; renderWrites(); }
+
+  function startAssign(id) { assigningId = id; expanded[id] = true; renderWrites(); }
+  function cancelAssign() { assigningId = null; renderWrites(); }
+  function confirmAssign(id) {
+    const w = findWrite(id); if (!w) return;
+    if (w.type !== 'call') {
+      data.portfolio.push({
+        id: newId(), ticker: w.ticker, currency: w.currency, qty: w.qty * 100,
+        costBasis: w.strike, currentPrice: w.strike, openDate: todayISO(),
+        sourceWriteId: w.id, status: 'open',
+      });
+    } else {
+      const sel = document.getElementById('vy-assignLot');
+      if (!sel) return;
+      const lot = findPos(sel.value);
+      if (!lot) { alert('Vyber pozici k uzavření.'); return; }
+      lot.status = 'closed'; lot.closeDate = todayISO(); lot.closePrice = w.strike; lot.closedByWriteId = w.id;
+    }
+    w.status = 'assigned'; w.assignedDate = todayISO();
+    assigningId = null;
+    saveData(); refresh();
+  }
 
   function delMove(id) {
     const m = data.moves.find(x => x.id === id); if (!m) return;
@@ -4070,14 +4280,59 @@ const VYPIS = (() => {
   }
   function delWrite(id) {
     const w = findWrite(id); if (!w) return;
-    showDialog(`Smazat výpis ${w.ticker}?`, 'Výpis i jeho připsané prémium budou trvale odstraněny ze zůstatku účtu. Tato akce je nevratná.', () => {
+    const extra = w.status === 'assigned' ? ' Propojená pozice v portfoliu bude také zrušena / znovu otevřena.' : '';
+    showDialog(`Smazat výpis ${w.ticker}?`, `Výpis i jeho připsané prémium budou trvale odstraněny ze zůstatku účtu.${extra} Tato akce je nevratná.`, () => {
+      if (w.status === 'assigned') {
+        if (w.type !== 'call') {
+          data.portfolio = data.portfolio.filter(p => p.sourceWriteId !== w.id);
+        } else {
+          const lot = data.portfolio.find(p => p.closedByWriteId === w.id);
+          if (lot) { lot.status = 'open'; delete lot.closeDate; delete lot.closePrice; delete lot.closedByWriteId; }
+        }
+      }
       data.writes = data.writes.filter(x => x.id !== id);
       delete expanded[id];
+      if (assigningId === id) assigningId = null;
+      saveData(); refresh();
+    });
+  }
+
+  /* ── Akce: portfolio ── */
+  function togglePos(id) { expanded['p-' + id] = !expanded['p-' + id]; renderPortfolio(); }
+  function updPrice(id, value) {
+    const p = findPos(id); if (!p) return;
+    p.currentPrice = parseFloat(value) || 0;
+    saveData(); refresh();
+  }
+  function startSell(id) { sellingId = id; expanded['p-' + id] = true; renderPortfolio(); }
+  function cancelSell() { sellingId = null; renderPortfolio(); }
+  function confirmSell(id) {
+    const p = findPos(id); if (!p) return;
+    const price = parseFloat(document.getElementById('vy-pSellPrice').value);
+    if (!(price >= 0)) { alert('Vyplň prodejní cenu.'); return; }
+    const date = document.getElementById('vy-pSellDate').value || todayISO();
+    p.status = 'closed'; p.closePrice = price; p.closeDate = date; p.closedByWriteId = null;
+    sellingId = null;
+    saveData(); refresh();
+  }
+  function delPos(id) {
+    const p = findPos(id); if (!p) return;
+    const extra = p.sourceWriteId ? ' Propojený výpis se vrátí do stavu „otevřeno“.' : '';
+    showDialog(`Smazat pozici ${p.ticker}?`, `Pozice bude trvale odstraněna z portfolia.${extra} Tato akce je nevratná.`, () => {
+      if (p.sourceWriteId) {
+        const w = findWrite(p.sourceWriteId);
+        if (w) { w.status = 'open'; delete w.assignedDate; }
+      }
+      data.portfolio = data.portfolio.filter(x => x.id !== id);
       saveData(); refresh();
     });
   }
 
   function setupEvents() {
+    updateRateInputs();
+    document.getElementById('vy-rateUSD').addEventListener('input', saveRates);
+    document.getElementById('vy-rateEUR').addEventListener('input', saveRates);
+
     document.getElementById('vy-btnAddCash').addEventListener('click', () => {
       toggleCashForm(document.getElementById('vy-cashForm').style.display === 'none');
     });
@@ -4089,21 +4344,27 @@ const VYPIS = (() => {
     document.querySelectorAll('#vy-cType button').forEach(b => {
       b.addEventListener('click', () => { cType = b.dataset.type; syncCType(); });
     });
-    document.getElementById('vy-cCurrency').addEventListener('change', () => { updateCashRateVisibility(); updateCashPreview(); });
+    document.getElementById('vy-cCurrency').addEventListener('change', updateCashPreview);
     document.getElementById('vy-cAmount').addEventListener('input', updateCashPreview);
-    document.getElementById('vy-cRate').addEventListener('input', updateCashPreview);
 
     document.getElementById('vy-wSave').addEventListener('click', saveWrite);
     document.getElementById('vy-wCancel').addEventListener('click', () => toggleWriteForm(false));
-    document.getElementById('vy-wCurrency').addEventListener('change', () => { updateWriteRateVisibility(); updateWritePreview(); });
-    ['vy-wStrike','vy-wDays','vy-wPremium','vy-wQty','vy-wRate'].forEach(id => {
+    document.querySelectorAll('#vy-wType button').forEach(b => {
+      b.addEventListener('click', () => { wType = b.dataset.type; syncWType(); });
+    });
+    document.getElementById('vy-wCurrency').addEventListener('change', updateWritePreview);
+    ['vy-wStrike','vy-wDays','vy-wPremium','vy-wQty'].forEach(id => {
       document.getElementById(id).addEventListener('input', updateWritePreview);
     });
   }
 
   function init() { initData(); setupEvents(); refresh(); }
 
-  return { init, refresh, toggle, delMove, delWrite };
+  return {
+    init, refresh, toggle, delMove, delWrite,
+    startAssign, cancelAssign, confirmAssign,
+    togglePos, updPrice, startSell, cancelSell, confirmSell, delPos,
+  };
 })();
 
 /* ════════════════════════════════════════════
