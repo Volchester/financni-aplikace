@@ -738,6 +738,18 @@
     .opc-hero-value { font-size: 28px; }
   }
 
+  /* ── Opce: podtaby Nákup / Výpis ── */
+  .opc-subtabs { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 4px; margin-bottom: 16px; box-shadow: var(--shadow); }
+  .opc-subtab { flex: 1; text-align: center; padding: 9px 12px; border-radius: 7px; font-size: 14px; font-weight: 500; color: var(--text-muted); background: none; border: none; cursor: pointer; transition: background 0.15s, color 0.15s; -webkit-tap-highlight-color: transparent; user-select: none; }
+  .opc-subtab.active { background: #d97706; color: #fff; font-weight: 600; }
+  .opc-subtab:not(.active):hover { background: var(--bg); }
+
+  /* ── Výpis: select měny, vklad/výběr ── */
+  .opc-field select { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 14px; background: var(--surface); color: var(--text); }
+  .opc-field select:focus { outline: none; border-color: #d97706; box-shadow: 0 0 0 2px rgba(217,119,6,0.15); }
+  .opc-seg button.active.in  { background: var(--green); border-color: var(--green); color: #fff; }
+  .opc-seg button.active.out { background: #e05252; border-color: #e05252; color: #fff; }
+
   /* ── Backup dialog ── */
   .backup-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
   .backup-actions .btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 16px; font-size: 14px; font-weight: 500; }
@@ -1174,6 +1186,13 @@
   <!-- ═══════════════ OPCE VIEW ═══════════════ -->
   <div id="view-opce" style="display:none">
 
+    <div class="opc-subtabs">
+      <button class="opc-subtab active" data-opcsub="nakup">Nákup</button>
+      <button class="opc-subtab" data-opcsub="vypis">Výpis</button>
+    </div>
+
+    <div id="opc-sub-nakup">
+
     <div class="card">
       <div class="opc-hero">
         <div class="opc-hero-label">Celkový zisk / ztráta z opcí</div>
@@ -1235,6 +1254,102 @@
     <div id="o-closedList"></div>
 
     <div class="card" id="o-yearly" style="display:none"></div>
+
+    </div><!-- /opc-sub-nakup -->
+
+    <div id="opc-sub-vypis" style="display:none">
+
+      <div class="card">
+        <div class="opc-hero">
+          <div class="opc-hero-label">Celková hodnota účtu pro výpis</div>
+          <div class="opc-hero-value" id="vy-heroValue">— Kč</div>
+          <div class="opc-hero-stats">
+            <div class="opc-stat">
+              <div class="opc-stat-label">Vklady − výběry</div>
+              <div class="opc-stat-value" id="vy-statDeposited">—</div>
+            </div>
+            <div class="opc-stat">
+              <div class="opc-stat-label">Z prémií</div>
+              <div class="opc-stat-value" id="vy-statPremiums">—</div>
+            </div>
+            <div class="opc-stat">
+              <div class="opc-stat-label">Počet výpisů</div>
+              <div class="opc-stat-value" id="vy-statCount">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:8px">
+        <div class="app-header">
+          <span class="app-title">Účet a výpisy</span>
+          <button class="btn" id="vy-btnAddCash">+ Přidat peníze</button>
+          <button class="btn btn-primary" id="vy-btnAddWrite">+ Přidat výpis</button>
+        </div>
+      </div>
+
+      <div class="card" id="vy-cashForm" style="display:none">
+        <div class="opc-fields">
+          <div class="opc-field"><label>Typ</label>
+            <div class="opc-seg" id="vy-cType">
+              <button type="button" class="in active" data-type="in">Vklad</button>
+              <button type="button" class="out" data-type="out">Výběr</button>
+            </div>
+          </div>
+          <div class="opc-field"><label>Datum</label><input type="date" id="vy-cDate"></div>
+          <div class="opc-field"><label>Částka</label><input type="number" id="vy-cAmount" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+          <div class="opc-field"><label>Měna</label>
+            <select id="vy-cCurrency">
+              <option value="CZK">CZK</option>
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+            </select>
+          </div>
+          <div class="opc-field" id="vy-cRateField" style="display:none"><label>Kurz (Kč za 1 jednotku)</label><input type="number" id="vy-cRate" inputmode="decimal" step="0.001" min="0" placeholder="0"></div>
+          <div class="opc-field"><label>Poznámka (volitelné)</label><input type="text" id="vy-cNote" placeholder=""></div>
+        </div>
+        <div class="opc-meta" id="vy-cPreview"></div>
+        <div class="opc-actions">
+          <button class="btn btn-primary" id="vy-cSave">Uložit</button>
+          <button class="btn" id="vy-cCancel">Zrušit</button>
+        </div>
+      </div>
+
+      <div class="card" id="vy-writeForm" style="display:none">
+        <div class="opc-fields">
+          <div class="opc-field"><label>Ticker akcie</label><input type="text" id="vy-wTicker" placeholder="AAPL" autocapitalize="characters"></div>
+          <div class="opc-field"><label>Strike cena</label><input type="number" id="vy-wStrike" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+          <div class="opc-field"><label>Dní do expirace</label><input type="number" id="vy-wDays" inputmode="numeric" min="1" placeholder="0"></div>
+          <div class="opc-field"><label>Prémium na 1 akcii</label><input type="number" id="vy-wPremium" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+          <div class="opc-field"><label>Počet kontraktů</label><input type="number" id="vy-wQty" inputmode="numeric" min="1" value="1"></div>
+          <div class="opc-field"><label>Měna</label>
+            <select id="vy-wCurrency">
+              <option value="CZK">CZK</option>
+              <option value="USD" selected>USD</option>
+              <option value="EUR">EUR</option>
+            </select>
+          </div>
+          <div class="opc-field" id="vy-wRateField"><label>Kurz (Kč za 1 jednotku)</label><input type="number" id="vy-wRate" inputmode="decimal" step="0.001" min="0" placeholder="0"></div>
+          <div class="opc-field"><label>Datum</label><input type="date" id="vy-wDate"></div>
+        </div>
+        <div class="opc-meta" id="vy-wPreview">Roční zhodnocení: —</div>
+        <div class="opc-actions">
+          <button class="btn btn-primary" id="vy-wSave">Uložit výpis</button>
+          <button class="btn" id="vy-wCancel">Zrušit</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin:16px 0 8px">
+        <div class="app-header"><span class="app-title">Výpisy</span></div>
+      </div>
+      <div id="vy-writeList"></div>
+
+      <div class="card" style="margin:16px 0 8px">
+        <div class="app-header"><span class="app-title">Historie vkladů a výběrů</span></div>
+      </div>
+      <div id="vy-cashList"></div>
+
+    </div><!-- /opc-sub-vypis -->
 
   </div><!-- /view-opce -->
 
@@ -1461,7 +1576,19 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
     if (view === 'vydaje')    VYDAJE.scheduleCharts();
     if (view === 'investice') INVESTICE.scheduleCharts();
     if (view === 'networth')  NETWORTH.refresh();
-    if (view === 'opce')      OPCE.refresh();
+    if (view === 'opce')      { OPCE.refresh(); VYPIS.refresh(); }
+  });
+});
+
+/* ── Opce: podtaby Nákup / Výpis ── */
+document.querySelectorAll('.opc-subtab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const sub = tab.dataset.opcsub;
+    if (!sub || tab.classList.contains('active')) return;
+    document.querySelectorAll('.opc-subtab').forEach(t => t.classList.toggle('active', t.dataset.opcsub === sub));
+    document.getElementById('opc-sub-nakup').style.display = sub === 'nakup' ? '' : 'none';
+    document.getElementById('opc-sub-vypis').style.display = sub === 'vypis' ? '' : 'none';
+    if (sub === 'vypis') VYPIS.refresh(); else OPCE.refresh();
   });
 });
 
@@ -3719,6 +3846,267 @@ const OPCE = (() => {
 })();
 
 /* ════════════════════════════════════════════
+   VYPIS MODULE — účet + evidence vypsaných opcí (prodej premia)
+════════════════════════════════════════════ */
+const VYPIS = (() => {
+  const STORAGE_KEY = 'opce_vypis_data';
+  let data = { moves: [], writes: [] };
+  const expanded = {};
+  let cType = 'in';
+
+  function initData() {
+    try { const s = localStorage.getItem(STORAGE_KEY); if (s) data = Object.assign({ moves: [], writes: [] }, JSON.parse(s)); } catch(e) {}
+    if (!Array.isArray(data.moves)) data.moves = [];
+    if (!Array.isArray(data.writes)) data.writes = [];
+  }
+  function saveData() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); showStatus(); } catch(e) {} }
+
+  /* ── Helpers ── */
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  function todayISO() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+  const fmtD = s => { if (!s) return '—'; const p = String(s).split('-'); return `${Number(p[2])}. ${Number(p[1])}. ${p[0]}`; };
+  const fmtCur = (n, cur) => new Intl.NumberFormat('cs-CZ', { maximumFractionDigits: 2 }).format(n || 0) + ' ' + cur;
+  const dniWord = n => n === 1 ? 'den' : (n >= 2 && n <= 4 ? 'dny' : 'dní');
+  const CHEVRON = '<svg class="opc-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+
+  // Roční zhodnocení: (prémium × 100 / strike / dní do expirace) × 365
+  function annualPct(premium, strike, days) {
+    if (!(premium > 0) || !(strike > 0) || !(days > 0)) return null;
+    return premium * 100 / strike / days * 365;
+  }
+  const fmtPct = p => (p > 0 ? '+' : '') + p.toFixed(1).replace('.', ',') + ' %';
+
+  function findWrite(id) { return data.writes.find(w => w.id === id); }
+
+  /* ── Hero / zůstatek účtu ── */
+  const movesSignedCZK = () => data.moves.reduce((s, m) => s + (m.type === 'out' ? -m.amountCZK : m.amountCZK), 0);
+  const premiumsCZK = () => data.writes.reduce((s, w) => s + w.premiumCZK, 0);
+  const balanceCZK = () => movesSignedCZK() + premiumsCZK();
+
+  function renderHero() {
+    document.getElementById('vy-heroValue').textContent = fmt(balanceCZK());
+    document.getElementById('vy-statDeposited').textContent = fmt(movesSignedCZK());
+    document.getElementById('vy-statPremiums').textContent = fmt(premiumsCZK());
+    document.getElementById('vy-statCount').textContent = String(data.writes.length);
+  }
+
+  /* ── Seznam výpisů ── */
+  function renderWrites() {
+    const wrap = document.getElementById('vy-writeList');
+    const list = data.writes.slice().sort((a, b) => String(b.date||'').localeCompare(String(a.date||'')));
+    if (!list.length) {
+      wrap.innerHTML = '<div class="card"><div class="opc-empty">Zatím žádné výpisy. Přidej je tlačítkem „+ Přidat výpis“.</div></div>';
+      return;
+    }
+    wrap.innerHTML = list.map(w => {
+      const ap = w.annualPct;
+      const cls = ap == null ? '' : (ap >= 0 ? 'pos' : 'neg');
+      return `
+      <div class="opc-card${expanded[w.id] ? ' open' : ''}">
+        <div class="opc-card-header" onclick="VYPIS.toggle('${w.id}')">
+          <div class="opc-card-info">
+            <span class="opc-ticker">${esc(w.ticker)}</span>
+            <span class="opc-card-sub">strike ${fmtCur(w.strike, w.currency)} • ${w.days} ${dniWord(w.days)}</span>
+          </div>
+          <span class="opc-profit ${cls}">${ap == null ? '—' : fmtPct(ap) + ' p.a.'}</span>
+          ${CHEVRON}
+        </div>
+        <div class="opc-card-body">
+          <div class="opc-rows">
+            <div class="opc-row"><span class="opc-row-label">Datum</span><span class="opc-row-value">${fmtD(w.date)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Strike</span><span class="opc-row-value">${fmtCur(w.strike, w.currency)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Dní do expirace</span><span class="opc-row-value">${w.days} ${dniWord(w.days)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Prémium na akcii</span><span class="opc-row-value">${fmtCur(w.premium, w.currency)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Počet kontraktů</span><span class="opc-row-value">${w.qty || 1}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Kurz</span><span class="opc-row-value">${w.currency === 'CZK' ? '—' : (w.rate + ' Kč')}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Připsané prémium</span><span class="opc-row-value pos">${fmt(w.premiumCZK)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Roční zhodnocení</span><span class="opc-row-value ${cls}">${ap == null ? '—' : fmtPct(ap)}</span></div>
+          </div>
+          <div class="opc-actions">
+            <button class="btn btn-danger" onclick="VYPIS.delWrite('${w.id}')">Smazat</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  /* ── Historie vkladů / výběrů ── */
+  function renderMoves() {
+    const wrap = document.getElementById('vy-cashList');
+    const list = data.moves.slice().sort((a, b) => String(b.date||'').localeCompare(String(a.date||'')));
+    if (!list.length) {
+      wrap.innerHTML = '<div class="card"><div class="opc-empty">Zatím žádné vklady ani výběry.</div></div>';
+      return;
+    }
+    wrap.innerHTML = '<div class="card"><div class="opc-rows" style="padding-top:4px">' + list.map(m => {
+      const isOut = m.type === 'out';
+      const fx = m.currency !== 'CZK' ? ` <small style="opacity:.7">(${fmt(m.amountCZK)})</small>` : '';
+      return `<div class="opc-row">
+        <span class="opc-row-label">${fmtD(m.date)} • ${isOut ? 'Výběr' : 'Vklad'}${m.note ? ' — ' + esc(m.note) : ''}</span>
+        <span class="opc-row-value ${isOut ? 'neg' : 'pos'}">${isOut ? '−' : '+'}${fmtCur(m.amount, m.currency)}${fx} <button class="btn btn-danger" style="padding:3px 9px;font-size:11px" onclick="VYPIS.delMove('${m.id}')">Smazat</button></span>
+      </div>`;
+    }).join('') + '</div></div>';
+  }
+
+  function refresh() { renderHero(); renderWrites(); renderMoves(); }
+
+  /* ── Formulář: přidat peníze ── */
+  function syncCType() {
+    document.querySelectorAll('#vy-cType button').forEach(b => b.classList.toggle('active', b.dataset.type === cType));
+  }
+  function updateCashRateVisibility() {
+    const isCzk = document.getElementById('vy-cCurrency').value === 'CZK';
+    document.getElementById('vy-cRateField').style.display = isCzk ? 'none' : '';
+  }
+  function updateCashPreview() {
+    const amount = parseFloat(document.getElementById('vy-cAmount').value) || 0;
+    const currency = document.getElementById('vy-cCurrency').value;
+    const rate = currency === 'CZK' ? 1 : parseFloat(document.getElementById('vy-cRate').value);
+    const el = document.getElementById('vy-cPreview');
+    if (currency === 'CZK' || !amount) { el.textContent = ''; return; }
+    el.textContent = (rate > 0) ? `≈ ${fmt(amount * rate)}` : 'Vyplň kurz pro přepočet na Kč.';
+  }
+  function toggleCashForm(show) {
+    document.getElementById('vy-cashForm').style.display = show ? '' : 'none';
+    if (!show) return;
+    toggleWriteForm(false);
+    cType = 'in'; syncCType();
+    document.getElementById('vy-cDate').value = todayISO();
+    document.getElementById('vy-cAmount').value = '';
+    document.getElementById('vy-cCurrency').value = 'CZK';
+    document.getElementById('vy-cRate').value = '';
+    document.getElementById('vy-cNote').value = '';
+    updateCashRateVisibility();
+    updateCashPreview();
+    document.getElementById('vy-cAmount').focus();
+  }
+  function saveCash() {
+    const type = cType;
+    const date = document.getElementById('vy-cDate').value || todayISO();
+    const amount = parseFloat(document.getElementById('vy-cAmount').value);
+    const currency = document.getElementById('vy-cCurrency').value;
+    const rate = currency === 'CZK' ? 1 : parseFloat(document.getElementById('vy-cRate').value);
+    const note = document.getElementById('vy-cNote').value.trim();
+    if (!(amount > 0)) { alert('Vyplň částku.'); return; }
+    if (currency !== 'CZK' && !(rate > 0)) { alert('Vyplň kurz pro přepočet na Kč.'); return; }
+    data.moves.push({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+      date, type, amount, currency, rate, amountCZK: amount * rate, note,
+    });
+    saveData();
+    toggleCashForm(false);
+    refresh();
+  }
+
+  /* ── Formulář: přidat výpis ── */
+  function updateWriteRateVisibility() {
+    const isCzk = document.getElementById('vy-wCurrency').value === 'CZK';
+    document.getElementById('vy-wRateField').style.display = isCzk ? 'none' : '';
+  }
+  function updateWritePreview() {
+    const strike = parseFloat(document.getElementById('vy-wStrike').value) || 0;
+    const days = parseInt(document.getElementById('vy-wDays').value, 10) || 0;
+    const premium = parseFloat(document.getElementById('vy-wPremium').value) || 0;
+    const qty = Math.max(1, parseInt(document.getElementById('vy-wQty').value, 10) || 1);
+    const currency = document.getElementById('vy-wCurrency').value;
+    const rate = currency === 'CZK' ? 1 : parseFloat(document.getElementById('vy-wRate').value);
+    const el = document.getElementById('vy-wPreview');
+    const ap = annualPct(premium, strike, days);
+    const apText = 'Roční zhodnocení: ' + (ap == null ? '—' : fmtPct(ap));
+    if (!premium || currency === 'CZK') { el.textContent = apText; return; }
+    if (!(rate > 0)) { el.textContent = apText + ' • Vyplň kurz pro přepočet prémia na Kč.'; return; }
+    el.textContent = apText + ` • Připíše se ${fmt(premium * 100 * qty * rate)}`;
+  }
+  function toggleWriteForm(show) {
+    document.getElementById('vy-writeForm').style.display = show ? '' : 'none';
+    if (!show) return;
+    toggleCashForm(false);
+    document.getElementById('vy-wTicker').value = '';
+    document.getElementById('vy-wStrike').value = '';
+    document.getElementById('vy-wDays').value = '';
+    document.getElementById('vy-wPremium').value = '';
+    document.getElementById('vy-wQty').value = 1;
+    document.getElementById('vy-wCurrency').value = 'USD';
+    document.getElementById('vy-wRate').value = '';
+    document.getElementById('vy-wDate').value = todayISO();
+    updateWriteRateVisibility();
+    updateWritePreview();
+    document.getElementById('vy-wTicker').focus();
+  }
+  function saveWrite() {
+    const ticker = document.getElementById('vy-wTicker').value.trim().toUpperCase();
+    const strike = parseFloat(document.getElementById('vy-wStrike').value);
+    const days = parseInt(document.getElementById('vy-wDays').value, 10);
+    const premium = parseFloat(document.getElementById('vy-wPremium').value);
+    const qty = Math.max(1, parseInt(document.getElementById('vy-wQty').value, 10) || 1);
+    const currency = document.getElementById('vy-wCurrency').value;
+    const rate = currency === 'CZK' ? 1 : parseFloat(document.getElementById('vy-wRate').value);
+    const date = document.getElementById('vy-wDate').value || todayISO();
+    if (!ticker) { alert('Vyplň ticker akcie.'); return; }
+    if (!(strike > 0)) { alert('Vyplň strike cenu.'); return; }
+    if (!(days > 0)) { alert('Vyplň počet dní do expirace.'); return; }
+    if (!(premium > 0)) { alert('Vyplň prémium na 1 akcii.'); return; }
+    if (currency !== 'CZK' && !(rate > 0)) { alert('Vyplň kurz pro přepočet na Kč.'); return; }
+    data.writes.push({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+      date, ticker, strike, days, premium, qty, currency, rate,
+      premiumCZK: premium * 100 * qty * rate,
+      annualPct: annualPct(premium, strike, days),
+    });
+    saveData();
+    toggleWriteForm(false);
+    refresh();
+  }
+
+  /* ── Akce ── */
+  function toggle(id) { expanded[id] = !expanded[id]; renderWrites(); }
+
+  function delMove(id) {
+    const m = data.moves.find(x => x.id === id); if (!m) return;
+    showDialog('Smazat záznam?', 'Pohyb bude trvale odstraněn ze zůstatku účtu. Tato akce je nevratná.', () => {
+      data.moves = data.moves.filter(x => x.id !== id);
+      saveData(); refresh();
+    });
+  }
+  function delWrite(id) {
+    const w = findWrite(id); if (!w) return;
+    showDialog(`Smazat výpis ${w.ticker}?`, 'Výpis i jeho připsané prémium budou trvale odstraněny ze zůstatku účtu. Tato akce je nevratná.', () => {
+      data.writes = data.writes.filter(x => x.id !== id);
+      delete expanded[id];
+      saveData(); refresh();
+    });
+  }
+
+  function setupEvents() {
+    document.getElementById('vy-btnAddCash').addEventListener('click', () => {
+      toggleCashForm(document.getElementById('vy-cashForm').style.display === 'none');
+    });
+    document.getElementById('vy-btnAddWrite').addEventListener('click', () => {
+      toggleWriteForm(document.getElementById('vy-writeForm').style.display === 'none');
+    });
+    document.getElementById('vy-cSave').addEventListener('click', saveCash);
+    document.getElementById('vy-cCancel').addEventListener('click', () => toggleCashForm(false));
+    document.querySelectorAll('#vy-cType button').forEach(b => {
+      b.addEventListener('click', () => { cType = b.dataset.type; syncCType(); });
+    });
+    document.getElementById('vy-cCurrency').addEventListener('change', () => { updateCashRateVisibility(); updateCashPreview(); });
+    document.getElementById('vy-cAmount').addEventListener('input', updateCashPreview);
+    document.getElementById('vy-cRate').addEventListener('input', updateCashPreview);
+
+    document.getElementById('vy-wSave').addEventListener('click', saveWrite);
+    document.getElementById('vy-wCancel').addEventListener('click', () => toggleWriteForm(false));
+    document.getElementById('vy-wCurrency').addEventListener('change', () => { updateWriteRateVisibility(); updateWritePreview(); });
+    ['vy-wStrike','vy-wDays','vy-wPremium','vy-wQty','vy-wRate'].forEach(id => {
+      document.getElementById(id).addEventListener('input', updateWritePreview);
+    });
+  }
+
+  function init() { initData(); setupEvents(); refresh(); }
+
+  return { init, refresh, toggle, delMove, delWrite };
+})();
+
+/* ════════════════════════════════════════════
    BACKUP MODULE — Export/Import JSON
 ════════════════════════════════════════════ */
 const BACKUP = (() => {
@@ -3729,6 +4117,7 @@ const BACKUP = (() => {
     investice: 'fin_investice_v1',
     networth:  'networth_app_data',
     opce:      'opce_app_data',
+    opce_vypis: 'opce_vypis_data',
   };
   const META_KEY = 'backup_meta';
   const REVERT_KEY = '_backup_before_import';
@@ -3897,6 +4286,7 @@ VYDAJE.init();
 INVESTICE.init();
 NETWORTH.init();
 OPCE.init();
+VYPIS.init();
 BACKUP.init();
 PRIJMY.scheduleCharts();
 
