@@ -1283,6 +1283,10 @@
               <div class="opc-stat-label">Otevřené pozice</div>
               <div class="opc-stat-value" id="vy-statPositions">—</div>
             </div>
+            <div class="opc-stat">
+              <div class="opc-stat-label">Zhodnocení</div>
+              <div class="opc-stat-value" id="vy-statPct">—</div>
+            </div>
           </div>
           <div class="opc-rows" id="vy-currencyBreakdown" style="margin-top:14px"></div>
         </div>
@@ -1365,6 +1369,8 @@
         <div class="app-header"><span class="app-title">Historie vkladů a výběrů</span></div>
       </div>
       <div id="vy-cashList"></div>
+
+      <div class="card" id="vy-yearly" style="display:none"></div>
 
     </div><!-- /opc-sub-vypis -->
 
@@ -3956,11 +3962,78 @@ const VYPIS = (() => {
     ziskEl.className = 'opc-stat-value' + (zisk > 0 ? ' pos' : zisk < 0 ? ' neg' : '');
     document.getElementById('vy-statPositions').textContent = String(data.portfolio.filter(p => p.status === 'open').length);
 
+    const pctEl = document.getElementById('vy-statPct');
+    const pctVal = depCZK > 0 ? (zisk / depCZK * 100) : null;
+    pctEl.textContent = pctVal == null ? '—' : fmtPct(pctVal);
+    pctEl.className = 'opc-stat-value' + (pctVal > 0 ? ' pos' : pctVal < 0 ? ' neg' : '');
+
     document.getElementById('vy-currencyBreakdown').innerHTML = CURRENCIES.map(cur => {
       const cashV = cash[cur] || 0, portV = port[cur] || 0, total = cashV + portV;
       const detail = portV ? ` (hotovost ${fmtCur(cashV, cur)} + akcie ${fmtCur(portV, cur)})` : '';
       const czkEq = cur === 'CZK' ? null : total * rateOf(cur);
       return `<div class="opc-row"><span class="opc-row-label">${cur}${detail}</span><span class="opc-row-value">${fmtCur(total, cur)}${czkEq != null ? ` <small style="opacity:.7">(${fmt(czkEq)})</small>` : ''}</span></div>`;
+    }).join('');
+  }
+
+  /* ── Roční statistika ──
+     Za každý rok: přijatá prémia (dle data výpisu) + realizovaný zisk/ztráta
+     z pozic uzavřených v tom roce. U běžného roku se navíc připočte
+     nerealizovaný zisk otevřených pozic k dnešnímu dni (aby souhlasil
+     s celkovým "Ziskem" nahoře) — u minulých let to jinak nejde,
+     protože neznáme cenu akcie k 31. 12. daného roku. */
+  function computeYearlyStats() {
+    const yearOf = d => String(d || '').slice(0, 4);
+    const currentYear = String(new Date().getFullYear());
+    const years = new Set();
+    data.moves.forEach(m => { if (m.date) years.add(yearOf(m.date)); });
+    data.writes.forEach(w => { if (w.date) years.add(yearOf(w.date)); });
+    data.portfolio.forEach(p => { if (p.status === 'closed' && p.closeDate) years.add(yearOf(p.closeDate)); });
+    if (!years.size) return [];
+
+    return [...years].sort().map(y => {
+      const vkladRok = { CZK: 0, USD: 0, EUR: 0 };
+      data.moves.forEach(m => { if (yearOf(m.date) === y) vkladRok[m.currency] += (m.type === 'out' ? -m.amount : m.amount); });
+
+      const vkladKum = { CZK: 0, USD: 0, EUR: 0 };
+      data.moves.forEach(m => { if (yearOf(m.date) <= y) vkladKum[m.currency] += (m.type === 'out' ? -m.amount : m.amount); });
+
+      const ziskRok = { CZK: 0, USD: 0, EUR: 0 };
+      data.writes.forEach(w => { if (yearOf(w.date) === y) ziskRok[w.currency] += w.premium * 100 * w.qty; });
+      data.portfolio.forEach(p => { if (p.status === 'closed' && yearOf(p.closeDate) === y) ziskRok[p.currency] += (p.closePrice - p.costBasis) * p.qty; });
+      if (y === currentYear) {
+        data.portfolio.forEach(p => { if (p.status === 'open') ziskRok[p.currency] += (p.currentPrice - p.costBasis) * p.qty; });
+      }
+
+      const vkladRokCZK = toCZK(vkladRok);
+      const vkladKumCZK = toCZK(vkladKum);
+      const ziskCZK = toCZK(ziskRok);
+      const pct = vkladKumCZK > 0 ? (ziskCZK / vkladKumCZK * 100) : null;
+      const writeCount = data.writes.filter(w => yearOf(w.date) === y).length;
+      const closedCount = data.portfolio.filter(p => p.status === 'closed' && yearOf(p.closeDate) === y).length;
+
+      return { year: y, vkladRokCZK, ziskCZK, pct, writeCount, closedCount };
+    });
+  }
+
+  const vypisWord = n => n === 1 ? 'výpis' : (n >= 2 && n <= 4 ? 'výpisy' : 'výpisů');
+  const pozWord = n => n === 1 ? 'uzavřená pozice' : (n >= 2 && n <= 4 ? 'uzavřené pozice' : 'uzavřených pozic');
+
+  function renderYearly() {
+    const el = document.getElementById('vy-yearly');
+    const years = computeYearlyStats();
+    if (!years.length) { el.style.display = 'none'; return; }
+    el.style.display = '';
+    el.innerHTML = '<div class="opc-yearly-title">Roční statistika</div>' + years.map(y => {
+      const cls = y.ziskCZK > 0 ? 'pos' : y.ziskCZK < 0 ? 'neg' : '';
+      const countLabel = `${y.writeCount} ${vypisWord(y.writeCount)}${y.closedCount ? ` • ${y.closedCount} ${pozWord(y.closedCount)}` : ''}`;
+      return `<div class="opc-yearly-row">
+        <span class="opc-yearly-year">${y.year}<span class="opc-yearly-count">${countLabel}</span></span>
+        <span class="opc-yearly-vals">
+          <span class="opc-yearly-gain">vklad ${fmt(y.vkladRokCZK)}</span>
+          <span class="opc-yearly-gain ${cls}">${fmtSign(y.ziskCZK)}</span>
+          <span class="opc-yearly-pct ${cls}">${y.pct == null ? '—' : fmtPct(y.pct)}</span>
+        </span>
+      </div>`;
     }).join('');
   }
 
@@ -4138,7 +4211,7 @@ const VYPIS = (() => {
     }).join('') + '</div></div>';
   }
 
-  function refresh() { renderHero(); renderWrites(); renderPortfolio(); renderMoves(); }
+  function refresh() { renderHero(); renderWrites(); renderPortfolio(); renderMoves(); renderYearly(); }
 
   /* ── Kurzy ── */
   function updateRateInputs() {
