@@ -2834,7 +2834,7 @@ const INVESTICE = (() => {
   }
 
   function getMonthData(key) {
-    const d=data.months[key]||HISTORY[key]||{}; return {invested:d.invested||0,value:d.value||0};
+    const d=data.months[key]||HISTORY[key]||{}; return {invested:d.invested||0,value:d.value||0,cash:d.cash||0};
   }
 
   function hasMonthData(key) {
@@ -3109,6 +3109,10 @@ const INVESTICE = (() => {
             <label>Vloženo celkem</label>
             <input type="number" inputmode="numeric" min="0" step="1" value="${d.invested||''}" placeholder="0" data-key="${key}" data-field="invested" oninput="INVESTICE.handleInput(this)" onfocus="this.select()">
           </div>
+          <div class="inv-card-field">
+            <label>Z toho cash</label>
+            <input type="number" inputmode="numeric" min="0" step="1" value="${d.cash||''}" placeholder="0" data-key="${key}" data-field="cash" oninput="INVESTICE.handleInput(this)" onfocus="this.select()">
+          </div>
         </div>`;
       card.appendChild(header); card.appendChild(body); cont.appendChild(card);
     });
@@ -3176,9 +3180,10 @@ const INVESTICE = (() => {
   function init(){initData();updateHero();renderChart();renderAccordion();renderYearlyComparison();}
 
   function getMonthValue(key) { return getMonthData(key).value || 0; }
+  function getMonthCash(key) { return getMonthData(key).cash || 0; }
   function getLatestKey() { const ks=getAllKeys(); return ks.length?ks[ks.length-1]:null; }
 
-  return {init, scheduleCharts, setRange, setYear, addYear, toggleCard, handleInput, getMonthValue, getLatestKey};
+  return {init, scheduleCharts, setRange, setYear, addYear, toggleCard, handleInput, getMonthValue, getMonthCash, getLatestKey};
 })();
 
 /* ════════════════════════════════════════════
@@ -3214,12 +3219,14 @@ const NETWORTH = (() => {
 
   function invKey(y, monthIdx) { return `${y}-${String(monthIdx+1).padStart(2,'0')}`; }
   function getInvestice(y, monthIdx) { return INVESTICE.getMonthValue(invKey(y, monthIdx)); }
+  function getInvesticeCash(y, monthIdx) { return INVESTICE.getMonthCash(invKey(y, monthIdx)); }
 
   function getMonthNetWorth(y, monthIdx) {
     const md = getMonthData(y, MESICE_KEYS[monthIdx]);
-    const hot = Number(md.hotovost) || 0;
+    const invCash = getInvesticeCash(y, monthIdx);
+    const hot = (Number(md.hotovost) || 0) + invCash;
     const dlu = Number(md.dluhy) || 0;
-    const inv = getInvestice(y, monthIdx);
+    const inv = getInvestice(y, monthIdx) - invCash;
     return { hotovost: hot, dluhy: dlu, investice: inv, assets: hot + inv, liab: dlu, net: hot + inv - dlu };
   }
 
