@@ -3919,6 +3919,19 @@ const VYPIS = (() => {
     if (!(premium > 0) || !(strike > 0) || !(days > 0)) return null;
     return premium * 100 / strike / days * 365;
   }
+  // Zhodnocení samotného obchodu (bez anualizace), po odečtení poplatků
+  function tradePct(w) {
+    const collateral = w.strike * 100 * (w.qty || 1);
+    if (!(collateral > 0)) return null;
+    const netPremium = w.premium * 100 * (w.qty || 1) - (w.fees || 0);
+    return netPremium / collateral * 100;
+  }
+  // Roční zhodnocení po odečtení poplatků (anualizace zhodnocení obchodu)
+  function annualPctOf(w) {
+    const tp = tradePct(w);
+    if (tp == null || !(w.days > 0)) return null;
+    return tp / w.days * 365;
+  }
   const fmtPct = p => (p > 0 ? '+' : '') + p.toFixed(1).replace('.', ',') + ' %';
 
   function findWrite(id) { return data.writes.find(w => w.id === id); }
@@ -4054,7 +4067,8 @@ const VYPIS = (() => {
       return;
     }
     wrap.innerHTML = list.map(w => {
-      const ap = w.annualPct;
+      const ap = annualPctOf(w);
+      const tp = tradePct(w);
       const cls = ap == null ? '' : (ap >= 0 ? 'pos' : 'neg');
       const isPut = w.type !== 'call';
       const assigned = w.status === 'assigned';
@@ -4115,7 +4129,7 @@ const VYPIS = (() => {
             <span class="opc-ticker">${esc(w.ticker)}</span>
             <span class="opc-card-sub">strike ${fmtCur(w.strike, w.currency)} • ${w.days} ${dniWord(w.days)}${assigned ? ' • uplatněno' : ''}</span>
           </div>
-          <span class="opc-profit ${cls}">${ap == null ? '—' : fmtPct(ap) + ' p.a.'}</span>
+          <span class="opc-profit ${cls}">${ap == null ? '—' : fmtPct(ap) + ' p.a.'}${tp == null ? '' : ` <small>(${fmtPct(tp)})</small>`}</span>
           ${CHEVRON}
         </div>
         <div class="opc-card-body">
@@ -4127,6 +4141,7 @@ const VYPIS = (() => {
             <div class="opc-row"><span class="opc-row-label">Počet kontraktů</span><span class="opc-row-value">${w.qty || 1}</span></div>
             <div class="opc-row"><span class="opc-row-label">Prémium celkem</span><span class="opc-row-value pos">${fmtCur(w.premium * 100 * w.qty, w.currency)}</span></div>
             <div class="opc-row"><span class="opc-row-label">Prémium po poplatcích</span><span class="opc-row-value pos">${fmtCur(w.premium * 100 * w.qty - (w.fees || 0), w.currency)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Zhodnocení obchodu</span><span class="opc-row-value ${cls}">${tp == null ? '—' : fmtPct(tp)}</span></div>
             <div class="opc-row"><span class="opc-row-label">Roční zhodnocení</span><span class="opc-row-value ${cls}">${ap == null ? '—' : fmtPct(ap)}</span></div>
           </div>
           <div class="opc-fields">
