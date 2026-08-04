@@ -1339,6 +1339,7 @@
           <div class="opc-field"><label>Dní do expirace</label><input type="number" id="vy-wDays" inputmode="numeric" min="1" placeholder="0"></div>
           <div class="opc-field"><label>Prémium na 1 akcii</label><input type="number" id="vy-wPremium" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
           <div class="opc-field"><label>Počet kontraktů</label><input type="number" id="vy-wQty" inputmode="numeric" min="1" value="1"></div>
+          <div class="opc-field"><label>Poplatky (celkem)</label><input type="number" id="vy-wFees" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
           <div class="opc-field"><label>Měna</label>
             <select id="vy-wCurrency">
               <option value="CZK">CZK</option>
@@ -3929,7 +3930,7 @@ const VYPIS = (() => {
     const bal = { CZK: 0, USD: 0, EUR: 0 };
     data.moves.forEach(m => { bal[m.currency] += (m.type === 'out' ? -m.amount : m.amount); });
     data.writes.forEach(w => {
-      bal[w.currency] += w.premium * 100 * w.qty;
+      bal[w.currency] += w.premium * 100 * w.qty - (w.fees || 0);
       if (w.status === 'assigned') {
         if (w.type === 'call') bal[w.currency] += w.strike * 100 * w.qty;
         else bal[w.currency] -= w.strike * 100 * w.qty;
@@ -4005,7 +4006,7 @@ const VYPIS = (() => {
       data.moves.forEach(m => { if (yearOf(m.date) <= y) vkladKum[m.currency] += (m.type === 'out' ? -m.amount : m.amount); });
 
       const ziskRok = { CZK: 0, USD: 0, EUR: 0 };
-      data.writes.forEach(w => { if (yearOf(w.date) === y) ziskRok[w.currency] += w.premium * 100 * w.qty; });
+      data.writes.forEach(w => { if (yearOf(w.date) === y) ziskRok[w.currency] += w.premium * 100 * w.qty - (w.fees || 0); });
       data.portfolio.forEach(p => { if (p.status === 'closed' && yearOf(p.closeDate) === y) ziskRok[p.currency] += (p.closePrice - p.costBasis) * p.qty; });
       if (y === currentYear) {
         data.portfolio.forEach(p => { if (p.status === 'open') ziskRok[p.currency] += (p.currentPrice - p.costBasis) * p.qty; });
@@ -4125,7 +4126,11 @@ const VYPIS = (() => {
             <div class="opc-row"><span class="opc-row-label">Prémium na akcii</span><span class="opc-row-value">${fmtCur(w.premium, w.currency)}</span></div>
             <div class="opc-row"><span class="opc-row-label">Počet kontraktů</span><span class="opc-row-value">${w.qty || 1}</span></div>
             <div class="opc-row"><span class="opc-row-label">Prémium celkem</span><span class="opc-row-value pos">${fmtCur(w.premium * 100 * w.qty, w.currency)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Prémium po poplatcích</span><span class="opc-row-value pos">${fmtCur(w.premium * 100 * w.qty - (w.fees || 0), w.currency)}</span></div>
             <div class="opc-row"><span class="opc-row-label">Roční zhodnocení</span><span class="opc-row-value ${cls}">${ap == null ? '—' : fmtPct(ap)}</span></div>
+          </div>
+          <div class="opc-fields">
+            <div class="opc-field"><label>Poplatky (celkem, ${w.currency})</label><input type="number" inputmode="decimal" step="0.01" min="0" value="${w.fees || 0}" onclick="event.stopPropagation()" onchange="VYPIS.updFees('${w.id}', this.value)"></div>
           </div>
           ${actionBlock}
         </div>
@@ -4278,11 +4283,12 @@ const VYPIS = (() => {
     const days = parseInt(document.getElementById('vy-wDays').value, 10) || 0;
     const premium = parseFloat(document.getElementById('vy-wPremium').value) || 0;
     const qty = Math.max(1, parseInt(document.getElementById('vy-wQty').value, 10) || 1);
+    const fees = parseFloat(document.getElementById('vy-wFees').value) || 0;
     const currency = document.getElementById('vy-wCurrency').value;
     const ap = annualPct(premium, strike, days);
     let text = 'Roční zhodnocení: ' + (ap == null ? '—' : fmtPct(ap));
     if (premium > 0) {
-      const totalNative = premium * 100 * qty;
+      const totalNative = premium * 100 * qty - fees;
       text += ` • Prémium celkem ${fmtCur(totalNative, currency)}`;
       const rate = rateOf(currency);
       if (currency !== 'CZK' && rate > 0) text += ` (≈ ${fmt(totalNative * rate)})`;
@@ -4299,6 +4305,7 @@ const VYPIS = (() => {
     document.getElementById('vy-wDays').value = '';
     document.getElementById('vy-wPremium').value = '';
     document.getElementById('vy-wQty').value = 1;
+    document.getElementById('vy-wFees').value = '';
     document.getElementById('vy-wCurrency').value = 'USD';
     document.getElementById('vy-wDate').value = todayISO();
     updateWritePreview();
@@ -4311,6 +4318,7 @@ const VYPIS = (() => {
     const days = parseInt(document.getElementById('vy-wDays').value, 10);
     const premium = parseFloat(document.getElementById('vy-wPremium').value);
     const qty = Math.max(1, parseInt(document.getElementById('vy-wQty').value, 10) || 1);
+    const fees = parseFloat(document.getElementById('vy-wFees').value) || 0;
     const currency = document.getElementById('vy-wCurrency').value;
     const date = document.getElementById('vy-wDate').value || todayISO();
     if (!ticker) { alert('Vyplň ticker akcie.'); return; }
@@ -4318,7 +4326,7 @@ const VYPIS = (() => {
     if (!(days > 0)) { alert('Vyplň počet dní do expirace.'); return; }
     if (!(premium > 0)) { alert('Vyplň prémium na 1 akcii.'); return; }
     data.writes.push({
-      id: newId(), date, ticker, type, strike, days, premium, qty, currency,
+      id: newId(), date, ticker, type, strike, days, premium, qty, currency, fees,
       status: 'open', annualPct: annualPct(premium, strike, days),
     });
     saveData();
@@ -4357,6 +4365,11 @@ const VYPIS = (() => {
       data.moves = data.moves.filter(x => x.id !== id);
       saveData(); refresh();
     });
+  }
+  function updFees(id, value) {
+    const w = findWrite(id); if (!w) return;
+    w.fees = parseFloat(value) || 0;
+    saveData(); refresh();
   }
   function delWrite(id) {
     const w = findWrite(id); if (!w) return;
@@ -4433,7 +4446,7 @@ const VYPIS = (() => {
       b.addEventListener('click', () => { wType = b.dataset.type; syncWType(); });
     });
     document.getElementById('vy-wCurrency').addEventListener('change', updateWritePreview);
-    ['vy-wStrike','vy-wDays','vy-wPremium','vy-wQty'].forEach(id => {
+    ['vy-wStrike','vy-wDays','vy-wPremium','vy-wQty','vy-wFees'].forEach(id => {
       document.getElementById(id).addEventListener('input', updateWritePreview);
     });
   }
@@ -4441,7 +4454,7 @@ const VYPIS = (() => {
   function init() { initData(); setupEvents(); refresh(); }
 
   return {
-    init, refresh, toggle, delMove, delWrite,
+    init, refresh, toggle, delMove, delWrite, updFees,
     startAssign, cancelAssign, confirmAssign,
     togglePos, updPrice, startSell, cancelSell, confirmSell, delPos,
   };
