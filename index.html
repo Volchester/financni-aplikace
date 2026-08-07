@@ -3888,6 +3888,7 @@ const VYPIS = (() => {
   let wType = 'put';
   let assigningId = null;
   let sellingId = null;
+  let closingId = null;
 
   function initData() {
     try {
@@ -3919,18 +3920,30 @@ const VYPIS = (() => {
     if (!(premium > 0) || !(strike > 0) || !(days > 0)) return null;
     return premium * 100 / strike / days * 365;
   }
-  // Zhodnocení samotného obchodu (bez anualizace), po odečtení poplatků
+  // Skutečný počet dní držení obchodu — do expirace, nebo do předčasného výkupu/prodeje opce
+  function daysHeld(w) {
+    if (w.status === 'closed' && w.closeDate && w.date) {
+      const diff = Math.round((new Date(w.closeDate) - new Date(w.date)) / 86400000);
+      return diff > 0 ? diff : 1;
+    }
+    return w.days;
+  }
+  // Čistý příjem z prémia po odečtení poplatků a případné ceny předčasného výkupu/prodeje opce
+  function netPremiumOf(w) {
+    return w.premium * 100 * (w.qty || 1) - (w.fees || 0) - (w.status === 'closed' ? (w.closePrice || 0) : 0);
+  }
+  // Zhodnocení samotného obchodu (bez anualizace), po odečtení poplatků a ceny výkupu/prodeje
   function tradePct(w) {
     const collateral = w.strike * 100 * (w.qty || 1);
     if (!(collateral > 0)) return null;
-    const netPremium = w.premium * 100 * (w.qty || 1) - (w.fees || 0);
-    return netPremium / collateral * 100;
+    return netPremiumOf(w) / collateral * 100;
   }
-  // Roční zhodnocení po odečtení poplatků (anualizace zhodnocení obchodu)
+  // Roční zhodnocení po odečtení poplatků (anualizace zhodnocení obchodu za skutečnou dobu držení)
   function annualPctOf(w) {
     const tp = tradePct(w);
-    if (tp == null || !(w.days > 0)) return null;
-    return tp / w.days * 365;
+    const dh = daysHeld(w);
+    if (tp == null || !(dh > 0)) return null;
+    return tp / dh * 365;
   }
   const fmtPct = p => (p > 0 ? '+' : '') + p.toFixed(1).replace('.', ',') + ' %';
 
@@ -3947,6 +3960,8 @@ const VYPIS = (() => {
       if (w.status === 'assigned') {
         if (w.type === 'call') bal[w.currency] += w.strike * 100 * w.qty;
         else bal[w.currency] -= w.strike * 100 * w.qty;
+      } else if (w.status === 'closed') {
+        bal[w.currency] -= (w.closePrice || 0);
       }
     });
     data.portfolio.forEach(p => {
@@ -4019,7 +4034,10 @@ const VYPIS = (() => {
       data.moves.forEach(m => { if (yearOf(m.date) <= y) vkladKum[m.currency] += (m.type === 'out' ? -m.amount : m.amount); });
 
       const ziskRok = { CZK: 0, USD: 0, EUR: 0 };
-      data.writes.forEach(w => { if (yearOf(w.date) === y) ziskRok[w.currency] += w.premium * 100 * w.qty - (w.fees || 0); });
+      data.writes.forEach(w => {
+        if (yearOf(w.date) === y) ziskRok[w.currency] += w.premium * 100 * w.qty - (w.fees || 0);
+        if (w.status === 'closed' && w.closeDate && yearOf(w.closeDate) === y) ziskRok[w.currency] -= (w.closePrice || 0);
+      });
       data.portfolio.forEach(p => { if (p.status === 'closed' && yearOf(p.closeDate) === y) ziskRok[p.currency] += (p.closePrice - p.costBasis) * p.qty; });
       if (y === currentYear) {
         data.portfolio.forEach(p => { if (p.status === 'open') ziskRok[p.currency] += (p.currentPrice - p.costBasis) * p.qty; });
@@ -4072,9 +4090,26 @@ const VYPIS = (() => {
       const cls = ap == null ? '' : (ap >= 0 ? 'pos' : 'neg');
       const isPut = w.type !== 'call';
       const assigned = w.status === 'assigned';
+      const closed = w.status === 'closed';
+      const closeLabel = isPut ? 'Výkup opce' : 'Prodej opce';
+      const closeVerb = isPut ? 'Vykoupeno' : 'Prodáno';
 
       let actionBlock;
-      if (assigningId === w.id) {
+      if (closingId === w.id) {
+        actionBlock = `
+          <div class="opc-close-form">
+            <div class="opc-close-title">${closeLabel}</div>
+            <div class="opc-fields">
+              <div class="opc-field"><label>${isPut ? 'Cena výkupu' : 'Prodejní cena'} (celkem, ${w.currency})</label><input type="number" id="vy-wClosePrice" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+              <div class="opc-field"><label>Datum</label><input type="date" id="vy-wCloseDate" value="${todayISO()}"></div>
+            </div>
+            <div class="opc-meta">Cena se odečte od přijatého prémia — sníží zůstatek účtu a přepočítá zhodnocení obchodu za skutečnou dobu držení.</div>
+            <div class="opc-actions">
+              <button class="btn btn-primary" onclick="VYPIS.confirmClose('${w.id}')">Potvrdit ${isPut ? 'výkup' : 'prodej'}</button>
+              <button class="btn" onclick="VYPIS.cancelClose()">Zpět</button>
+            </div>
+          </div>`;
+      } else if (assigningId === w.id) {
         if (isPut) {
           actionBlock = `
           <div class="opc-close-form">
@@ -4113,10 +4148,15 @@ const VYPIS = (() => {
         actionBlock = `
           <div class="opc-meta">Uplatněno ${fmtD(w.assignedDate)}</div>
           <div class="opc-actions"><button class="btn btn-danger" onclick="VYPIS.delWrite('${w.id}')">Smazat</button></div>`;
+      } else if (closed) {
+        actionBlock = `
+          <div class="opc-meta">${closeVerb} ${fmtD(w.closeDate)} za ${fmtCur(w.closePrice || 0, w.currency)}</div>
+          <div class="opc-actions"><button class="btn btn-danger" onclick="VYPIS.delWrite('${w.id}')">Smazat</button></div>`;
       } else {
         actionBlock = `
           <div class="opc-actions">
             <button class="btn btn-primary" onclick="VYPIS.startAssign('${w.id}')">Uplatnit (assignment)</button>
+            <button class="btn" onclick="VYPIS.startClose('${w.id}')">${closeLabel}</button>
             <button class="btn btn-danger" onclick="VYPIS.delWrite('${w.id}')">Smazat</button>
           </div>`;
       }
@@ -4127,7 +4167,7 @@ const VYPIS = (() => {
           <div class="opc-card-info">
             <span class="opc-type ${isPut ? 'put' : 'call'}">${isPut ? 'PUT' : 'CALL'}</span>
             <span class="opc-ticker">${esc(w.ticker)}</span>
-            <span class="opc-card-sub">strike ${fmtCur(w.strike, w.currency)} • ${w.days} ${dniWord(w.days)}${assigned ? ' • uplatněno' : ''}</span>
+            <span class="opc-card-sub">strike ${fmtCur(w.strike, w.currency)} • ${w.days} ${dniWord(w.days)}${assigned ? ' • uplatněno' : closed ? ` • ${closeVerb.toLowerCase()}` : ''}</span>
           </div>
           <span class="opc-profit ${cls}">${ap == null ? '—' : fmtPct(ap) + ' p.a.'}${tp == null ? '' : ` <small>(${fmtPct(tp)})</small>`}</span>
           ${CHEVRON}
@@ -4137,10 +4177,13 @@ const VYPIS = (() => {
             <div class="opc-row"><span class="opc-row-label">Datum</span><span class="opc-row-value">${fmtD(w.date)}</span></div>
             <div class="opc-row"><span class="opc-row-label">Strike</span><span class="opc-row-value">${fmtCur(w.strike, w.currency)}</span></div>
             <div class="opc-row"><span class="opc-row-label">Dní do expirace</span><span class="opc-row-value">${w.days} ${dniWord(w.days)}</span></div>
+            ${closed ? `<div class="opc-row"><span class="opc-row-label">Drženo do uzavření</span><span class="opc-row-value">${daysHeld(w)} ${dniWord(daysHeld(w))}</span></div>` : ''}
             <div class="opc-row"><span class="opc-row-label">Prémium na akcii</span><span class="opc-row-value">${fmtCur(w.premium, w.currency)}</span></div>
             <div class="opc-row"><span class="opc-row-label">Počet kontraktů</span><span class="opc-row-value">${w.qty || 1}</span></div>
             <div class="opc-row"><span class="opc-row-label">Prémium celkem</span><span class="opc-row-value pos">${fmtCur(w.premium * 100 * w.qty, w.currency)}</span></div>
             <div class="opc-row"><span class="opc-row-label">Prémium po poplatcích</span><span class="opc-row-value pos">${fmtCur(w.premium * 100 * w.qty - (w.fees || 0), w.currency)}</span></div>
+            ${closed ? `<div class="opc-row"><span class="opc-row-label">${isPut ? 'Cena výkupu' : 'Prodejní cena'} opce</span><span class="opc-row-value neg">−${fmtCur(w.closePrice || 0, w.currency)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Čistý zisk</span><span class="opc-row-value ${netPremiumOf(w) >= 0 ? 'pos' : 'neg'}">${fmtSignCur(netPremiumOf(w), w.currency)}</span></div>` : ''}
             <div class="opc-row"><span class="opc-row-label">Zhodnocení obchodu</span><span class="opc-row-value ${cls}">${tp == null ? '—' : fmtPct(tp)}</span></div>
             <div class="opc-row"><span class="opc-row-label">Roční zhodnocení</span><span class="opc-row-value ${cls}">${ap == null ? '—' : fmtPct(ap)}</span></div>
           </div>
@@ -4352,7 +4395,7 @@ const VYPIS = (() => {
   /* ── Akce: výpisy / assignment ── */
   function toggle(id) { expanded[id] = !expanded[id]; renderWrites(); }
 
-  function startAssign(id) { assigningId = id; expanded[id] = true; renderWrites(); }
+  function startAssign(id) { assigningId = id; closingId = null; expanded[id] = true; renderWrites(); }
   function cancelAssign() { assigningId = null; renderWrites(); }
   function confirmAssign(id) {
     const w = findWrite(id); if (!w) return;
@@ -4371,6 +4414,18 @@ const VYPIS = (() => {
     }
     w.status = 'assigned'; w.assignedDate = todayISO();
     assigningId = null;
+    saveData(); refresh();
+  }
+
+  function startClose(id) { closingId = id; assigningId = null; expanded[id] = true; renderWrites(); }
+  function cancelClose() { closingId = null; renderWrites(); }
+  function confirmClose(id) {
+    const w = findWrite(id); if (!w) return;
+    const price = parseFloat(document.getElementById('vy-wClosePrice').value);
+    if (!(price >= 0)) { alert('Vyplň cenu, za kterou byla opce uzavřena.'); return; }
+    const date = document.getElementById('vy-wCloseDate').value || todayISO();
+    w.status = 'closed'; w.closePrice = price; w.closeDate = date;
+    closingId = null;
     saveData(); refresh();
   }
 
@@ -4401,6 +4456,7 @@ const VYPIS = (() => {
       data.writes = data.writes.filter(x => x.id !== id);
       delete expanded[id];
       if (assigningId === id) assigningId = null;
+      if (closingId === id) closingId = null;
       saveData(); refresh();
     });
   }
@@ -4471,6 +4527,7 @@ const VYPIS = (() => {
   return {
     init, refresh, toggle, delMove, delWrite, updFees,
     startAssign, cancelAssign, confirmAssign,
+    startClose, cancelClose, confirmClose,
     togglePos, updPrice, startSell, cancelSell, confirmSell, delPos,
   };
 })();
