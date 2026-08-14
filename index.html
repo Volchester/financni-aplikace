@@ -1357,9 +1357,14 @@
       </div>
 
       <div class="card" style="margin:16px 0 8px">
-        <div class="app-header"><span class="app-title">Výpisy</span></div>
+        <div class="app-header"><span class="app-title">Aktivní výpisy</span></div>
       </div>
-      <div id="vy-writeList"></div>
+      <div id="vy-activeList"></div>
+
+      <div class="card" style="margin:16px 0 8px">
+        <div class="app-header"><span class="app-title">Uzavřené výpisy</span></div>
+      </div>
+      <div id="vy-closedList"></div>
 
       <div class="card" style="margin:16px 0 8px">
         <div class="app-header"><span class="app-title">Portfolio z uplatněných opcí</span></div>
@@ -3915,6 +3920,18 @@ const VYPIS = (() => {
   const CHEVRON = '<svg class="opc-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
   const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
+  const DAY = 86400000;
+  const parseDate = s => { const p = String(s).split('-').map(Number); return new Date(p[0], p[1]-1, p[2]); };
+  const daysBetween = (a, b) => Math.round((parseDate(b) - parseDate(a)) / DAY);
+  function addDays(dateStr, n) { const d = parseDate(dateStr); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+  // Datum expirace = datum výpisu + počet dní do expirace zadaný při vypsání
+  function expDateOf(w) { return w.date ? addDays(w.date, w.days) : null; }
+  // Kolik dní zbývá do expirace (může být záporné, pokud už expirace proběhla)
+  function daysLeftOf(w) { const ed = expDateOf(w); return ed ? daysBetween(todayISO(), ed) : null; }
+  // Otevřený výpis, u kterého už uplynulo datum expirace a čeká na ruční vypořádání (uplatnění / výkup / expirace bez hodnoty)
+  function isPending(w) { const dl = daysLeftOf(w); return w.status === 'open' && dl != null && dl < 0; }
+  const dleftClass = d => d > 30 ? 'ok' : d > 7 ? 'warn' : 'hot';
+
   // Roční zhodnocení: (prémium × 100 / strike / dní do expirace) × 365
   function annualPct(premium, strike, days) {
     if (!(premium > 0) || !(strike > 0) || !(days > 0)) return null;
@@ -4077,20 +4094,16 @@ const VYPIS = (() => {
   }
 
   /* ── Seznam výpisů ── */
-  function renderWrites() {
-    const wrap = document.getElementById('vy-writeList');
-    const list = data.writes.slice().sort((a, b) => String(b.date||'').localeCompare(String(a.date||'')));
-    if (!list.length) {
-      wrap.innerHTML = '<div class="card"><div class="opc-empty">Zatím žádné výpisy. Přidej je tlačítkem „+ Přidat výpis“.</div></div>';
-      return;
-    }
-    wrap.innerHTML = list.map(w => {
+  function writeCard(w) {
       const ap = annualPctOf(w);
       const tp = tradePct(w);
       const cls = ap == null ? '' : (ap >= 0 ? 'pos' : 'neg');
       const isPut = w.type !== 'call';
       const assigned = w.status === 'assigned';
       const closed = w.status === 'closed';
+      const pending = isPending(w);
+      const dl = daysLeftOf(w);
+      const expDate = expDateOf(w);
       const closeLabel = isPut ? 'Výkup opce' : 'Prodej opce';
       const closeVerb = isPut ? 'Vykoupeno' : 'Prodáno';
 
@@ -4154,6 +4167,7 @@ const VYPIS = (() => {
           <div class="opc-actions"><button class="btn btn-danger" onclick="VYPIS.delWrite('${w.id}')">Smazat</button></div>`;
       } else {
         actionBlock = `
+          ${pending ? '<div class="opc-meta">Expirace proběhla, ale výpis ještě nemáš vypořádaný — rozhodni, jestli byla opce uplatněna, nebo ji uzavři/expiruj s nulovou hodnotou.</div>' : ''}
           <div class="opc-actions">
             <button class="btn btn-primary" onclick="VYPIS.startAssign('${w.id}')">Uplatnit (assignment)</button>
             <button class="btn" onclick="VYPIS.startClose('${w.id}')">${closeLabel}</button>
@@ -4161,22 +4175,35 @@ const VYPIS = (() => {
           </div>`;
       }
 
+      const subInfo = pending
+        ? `expirovala ${fmtD(expDate)} • strike ${fmtCur(w.strike, w.currency)}`
+        : assigned ? `strike ${fmtCur(w.strike, w.currency)} • uplatněno`
+        : closed ? `strike ${fmtCur(w.strike, w.currency)} • ${closeVerb.toLowerCase()}`
+        : `strike ${fmtCur(w.strike, w.currency)} • prémium ${fmtCur(w.premium * 100 * w.qty, w.currency)}`;
+
+      const badge = pending
+        ? `<span class="opc-dleft hot">čeká na vypořádání</span>`
+        : (assigned || closed)
+        ? `<span class="opc-profit ${cls}">${ap == null ? '—' : fmtPct(ap) + ' p.a.'}${tp == null ? '' : ` <small>(${fmtPct(tp)})</small>`}</span>`
+        : `<span class="opc-dleft ${dleftClass(dl)}">zbývá ${dl} ${dniWord(dl)}</span>`;
+
       return `
       <div class="opc-card${expanded[w.id] ? ' open' : ''}">
         <div class="opc-card-header" onclick="VYPIS.toggle('${w.id}')">
           <div class="opc-card-info">
             <span class="opc-type ${isPut ? 'put' : 'call'}">${isPut ? 'PUT' : 'CALL'}</span>
             <span class="opc-ticker">${esc(w.ticker)}</span>
-            <span class="opc-card-sub">strike ${fmtCur(w.strike, w.currency)} • ${w.days} ${dniWord(w.days)}${assigned ? ' • uplatněno' : closed ? ` • ${closeVerb.toLowerCase()}` : ''}</span>
+            <span class="opc-card-sub">${subInfo}</span>
           </div>
-          <span class="opc-profit ${cls}">${ap == null ? '—' : fmtPct(ap) + ' p.a.'}${tp == null ? '' : ` <small>(${fmtPct(tp)})</small>`}</span>
+          ${badge}
           ${CHEVRON}
         </div>
         <div class="opc-card-body">
           <div class="opc-rows">
-            <div class="opc-row"><span class="opc-row-label">Datum</span><span class="opc-row-value">${fmtD(w.date)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Datum vypsání</span><span class="opc-row-value">${fmtD(w.date)}</span></div>
             <div class="opc-row"><span class="opc-row-label">Strike</span><span class="opc-row-value">${fmtCur(w.strike, w.currency)}</span></div>
-            <div class="opc-row"><span class="opc-row-label">Dní do expirace</span><span class="opc-row-value">${w.days} ${dniWord(w.days)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Dní do expirace (při vypsání)</span><span class="opc-row-value">${w.days} ${dniWord(w.days)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Datum expirace</span><span class="opc-row-value${pending ? ' neg' : ''}">${fmtD(expDate)}${w.status === 'open' ? (pending ? ` • expirovalo před ${Math.abs(dl)} ${dniWord(Math.abs(dl))}` : ` • zbývá ${dl} ${dniWord(dl)}`) : ''}</span></div>
             ${closed ? `<div class="opc-row"><span class="opc-row-label">Drženo do uzavření</span><span class="opc-row-value">${daysHeld(w)} ${dniWord(daysHeld(w))}</span></div>` : ''}
             <div class="opc-row"><span class="opc-row-label">Prémium na akcii</span><span class="opc-row-value">${fmtCur(w.premium, w.currency)}</span></div>
             <div class="opc-row"><span class="opc-row-label">Počet kontraktů</span><span class="opc-row-value">${w.qty || 1}</span></div>
@@ -4193,7 +4220,27 @@ const VYPIS = (() => {
           ${actionBlock}
         </div>
       </div>`;
-    }).join('');
+  }
+
+  function renderWrites() {
+    const activeWrap = document.getElementById('vy-activeList');
+    const closedWrap = document.getElementById('vy-closedList');
+    const active = data.writes.filter(w => w.status === 'open' && !isPending(w))
+      .sort((a, b) => String(expDateOf(a)||'').localeCompare(String(expDateOf(b)||'')));
+    const closedList = data.writes.filter(w => w.status !== 'open' || isPending(w))
+      .sort((a, b) => {
+        const ka = a.closeDate || a.assignedDate || (isPending(a) ? expDateOf(a) : a.date) || a.date;
+        const kb = b.closeDate || b.assignedDate || (isPending(b) ? expDateOf(b) : b.date) || b.date;
+        return String(kb||'').localeCompare(String(ka||''));
+      });
+
+    activeWrap.innerHTML = active.length
+      ? active.map(writeCard).join('')
+      : '<div class="card"><div class="opc-empty">Žádné aktivní výpisy. Přidej je tlačítkem „+ Přidat výpis“.</div></div>';
+
+    closedWrap.innerHTML = closedList.length
+      ? closedList.map(writeCard).join('')
+      : '<div class="card"><div class="opc-empty">Zatím žádné uzavřené výpisy.</div></div>';
   }
 
   /* ── Portfolio z uplatněných opcí ── */
