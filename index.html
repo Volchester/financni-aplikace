@@ -4105,7 +4105,7 @@ const VYPIS = (() => {
       const dl = daysLeftOf(w);
       const expDate = expDateOf(w);
       const closeLabel = isPut ? 'Výkup opce' : 'Prodej opce';
-      const closeVerb = isPut ? 'Vykoupeno' : 'Prodáno';
+      const closeVerb = w.expired ? 'Expirovala' : (isPut ? 'Vykoupeno' : 'Prodáno');
 
       let actionBlock;
       if (closingId === w.id) {
@@ -4163,7 +4163,7 @@ const VYPIS = (() => {
           <div class="opc-actions"><button class="btn btn-danger" onclick="VYPIS.delWrite('${w.id}')">Smazat</button></div>`;
       } else if (closed) {
         actionBlock = `
-          <div class="opc-meta">${closeVerb} ${fmtD(w.closeDate)} za ${fmtCur(w.closePrice || 0, w.currency)}</div>
+          <div class="opc-meta">${w.expired ? `Expirovala bez hodnoty ${fmtD(w.closeDate)}` : `${closeVerb} ${fmtD(w.closeDate)} za ${fmtCur(w.closePrice || 0, w.currency)}`}</div>
           <div class="opc-actions"><button class="btn btn-danger" onclick="VYPIS.delWrite('${w.id}')">Smazat</button></div>`;
       } else {
         actionBlock = `
@@ -4171,6 +4171,7 @@ const VYPIS = (() => {
           <div class="opc-actions">
             <button class="btn btn-primary" onclick="VYPIS.startAssign('${w.id}')">Uplatnit (assignment)</button>
             <button class="btn" onclick="VYPIS.startClose('${w.id}')">${closeLabel}</button>
+            <button class="btn" onclick="VYPIS.expireWrite('${w.id}')">Expirovala bez hodnoty (0)</button>
             <button class="btn btn-danger" onclick="VYPIS.delWrite('${w.id}')">Smazat</button>
           </div>`;
       }
@@ -4475,6 +4476,14 @@ const VYPIS = (() => {
     closingId = null;
     saveData(); refresh();
   }
+  // Rychlé potvrzení, že opce expirovala bezcenná — celé prémium zůstává jako zisk
+  function expireWrite(id) {
+    const w = findWrite(id); if (!w) return;
+    const ed = expDateOf(w);
+    w.status = 'closed'; w.closePrice = 0; w.closeDate = (ed && ed <= todayISO()) ? ed : todayISO(); w.expired = true;
+    closingId = null; assigningId = null;
+    saveData(); refresh();
+  }
 
   function delMove(id) {
     const m = data.moves.find(x => x.id === id); if (!m) return;
@@ -4574,7 +4583,7 @@ const VYPIS = (() => {
   return {
     init, refresh, toggle, delMove, delWrite, updFees,
     startAssign, cancelAssign, confirmAssign,
-    startClose, cancelClose, confirmClose,
+    startClose, cancelClose, confirmClose, expireWrite,
     togglePos, updPrice, startSell, cancelSell, confirmSell, delPos,
   };
 })();
