@@ -4179,8 +4179,8 @@ const VYPIS = (() => {
 
       const subInfo = pending
         ? `expirovala ${fmtD(expDate)} • strike ${fmtCur(w.strike, w.currency)}`
-        : assigned ? `strike ${fmtCur(w.strike, w.currency)} • uplatněno`
-        : closed ? `strike ${fmtCur(w.strike, w.currency)} • ${closeVerb.toLowerCase()}`
+        : assigned ? `strike ${fmtCur(w.strike, w.currency)} • uplatněno • dnů: ${daysHeld(w)}`
+        : closed ? `strike ${fmtCur(w.strike, w.currency)} • ${closeVerb.toLowerCase()} • dnů: ${daysHeld(w)}`
         : `strike ${fmtCur(w.strike, w.currency)} • prémium ${fmtCur(w.premium * 100 * w.qty, w.currency)}`;
 
       const badge = pending
