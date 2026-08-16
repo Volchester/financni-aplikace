@@ -3937,10 +3937,11 @@ const VYPIS = (() => {
     if (!(premium > 0) || !(strike > 0) || !(days > 0)) return null;
     return premium * 100 / strike / days * 365;
   }
-  // Skutečný počet dní držení obchodu — do expirace, nebo do předčasného výkupu/prodeje opce
+  // Skutečný počet dní držení obchodu — do expirace, nebo do předčasného výkupu/prodeje/uplatnění opce
   function daysHeld(w) {
-    if (w.status === 'closed' && w.closeDate && w.date) {
-      const diff = Math.round((new Date(w.closeDate) - new Date(w.date)) / 86400000);
+    const endDate = w.status === 'closed' ? w.closeDate : w.status === 'assigned' ? w.assignedDate : null;
+    if (endDate && w.date) {
+      const diff = Math.round((new Date(endDate) - new Date(w.date)) / 86400000);
       return diff > 0 ? diff : 1;
     }
     return w.days;
@@ -4205,7 +4206,7 @@ const VYPIS = (() => {
             <div class="opc-row"><span class="opc-row-label">Strike</span><span class="opc-row-value">${fmtCur(w.strike, w.currency)}</span></div>
             <div class="opc-row"><span class="opc-row-label">Dní do expirace (při vypsání)</span><span class="opc-row-value">${w.days} ${dniWord(w.days)}</span></div>
             <div class="opc-row"><span class="opc-row-label">Datum expirace</span><span class="opc-row-value${pending ? ' neg' : ''}">${fmtD(expDate)}${w.status === 'open' ? (pending ? ` • expirovalo před ${Math.abs(dl)} ${dniWord(Math.abs(dl))}` : ` • zbývá ${dl} ${dniWord(dl)}`) : ''}</span></div>
-            ${closed ? `<div class="opc-row"><span class="opc-row-label">Drženo do uzavření</span><span class="opc-row-value">${daysHeld(w)} ${dniWord(daysHeld(w))}</span></div>` : ''}
+            ${(closed || assigned) ? `<div class="opc-row"><span class="opc-row-label">Doba držení</span><span class="opc-row-value">${daysHeld(w)} ${dniWord(daysHeld(w))}</span></div>` : ''}
             <div class="opc-row"><span class="opc-row-label">Prémium na akcii</span><span class="opc-row-value">${fmtCur(w.premium, w.currency)}</span></div>
             <div class="opc-row"><span class="opc-row-label">Počet kontraktů</span><span class="opc-row-value">${w.qty || 1}</span></div>
             <div class="opc-row"><span class="opc-row-label">Prémium celkem</span><span class="opc-row-value pos">${fmtCur(w.premium * 100 * w.qty, w.currency)}</span></div>
