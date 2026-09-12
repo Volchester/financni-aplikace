@@ -4196,7 +4196,7 @@ const VYPIS = (() => {
       const buyCount = data.buys.filter(b => periodOf(b.date) === pk).length;
       const closedCount = data.portfolio.filter(p => p.status === 'closed' && periodOf(p.closeDate) === pk).length;
 
-      return { key: pk, vkladPeriodCZK, vkladKumCZK, ziskCZK, pct, writeCount, buyCount, closedCount };
+      return { key: pk, vkladPeriodCZK, vkladKumCZK, pctBaseCZK, ziskCZK, pct, writeCount, buyCount, closedCount };
     });
   }
 
@@ -4223,7 +4223,7 @@ const VYPIS = (() => {
     }
     return buildStatsSeries(allMonths, monthOf, mk => mk === nowMonth)
       .filter(r => r.key.slice(0, 4) === String(year))
-      .map(r => ({ ...r, label: MESICE_LABELS[Number(r.key.slice(5, 7)) - 1], vkladCZK: r.vkladKumCZK }));
+      .map(r => ({ ...r, label: MESICE_LABELS[Number(r.key.slice(5, 7)) - 1], vkladCZK: r.pctBaseCZK }));
   }
 
   const vypisWord = n => n === 1 ? 'výpis' : (n >= 2 && n <= 4 ? 'výpisy' : 'výpisů');
@@ -4268,7 +4268,7 @@ const VYPIS = (() => {
       if (!data.statsMonthYear || !years.includes(data.statsMonthYear)) data.statsMonthYear = years[years.length - 1];
       const yearSelect = `<select class="opc-yearly-yearsel" onchange="VYPIS.setStatsMonthYear(this.value)">${years.map(y => `<option value="${y}"${y === data.statsMonthYear ? ' selected' : ''}>${y}</option>`).join('')}</select>`;
       const months = computeMonthlyStats(data.statsMonthYear);
-      el.innerHTML = `<div class="opc-yearly-header"><div class="opc-yearly-title">Měsíční statistika</div>${toggle}</div>${yearSelect}` + months.map(m => statsRow(m, 'vklad celkem')).join('');
+      el.innerHTML = `<div class="opc-yearly-header"><div class="opc-yearly-title">Měsíční statistika</div>${toggle}</div>${yearSelect}` + months.map(m => statsRow(m, 'hodnota celkem')).join('');
     } else {
       const rows = computeYearlyStats();
       el.innerHTML = `<div class="opc-yearly-header"><div class="opc-yearly-title">Roční statistika</div>${toggle}</div>` + rows.map(r => statsRow(r)).join('');
