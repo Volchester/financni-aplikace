@@ -4180,9 +4180,6 @@ const VYPIS = (() => {
     return MESICE_LABELS.map((label, i) => {
       const mk = `${year}-${String(i + 1).padStart(2, '0')}`;
 
-      const vkladMesic = { CZK: 0, USD: 0, EUR: 0 };
-      data.moves.forEach(m => { if (monthOf(m.date) === mk) vkladMesic[m.currency] += (m.type === 'out' ? -m.amount : m.amount); });
-
       const vkladKum = { CZK: 0, USD: 0, EUR: 0 };
       data.moves.forEach(m => { if (monthOf(m.date) <= mk) vkladKum[m.currency] += (m.type === 'out' ? -m.amount : m.amount); });
 
@@ -4200,7 +4197,6 @@ const VYPIS = (() => {
         data.portfolio.forEach(p => { if (p.status === 'open') ziskMesic[p.currency] += (p.currentPrice - p.costBasis) * p.qty; });
       }
 
-      const vkladMesicCZK = toCZK(vkladMesic);
       const vkladKumCZK = toCZK(vkladKum);
       const ziskCZK = toCZK(ziskMesic);
       const pct = vkladKumCZK > 0 ? (ziskCZK / vkladKumCZK * 100) : null;
@@ -4208,7 +4204,7 @@ const VYPIS = (() => {
       const buyCount = data.buys.filter(b => monthOf(b.date) === mk).length;
       const closedCount = data.portfolio.filter(p => p.status === 'closed' && monthOf(p.closeDate) === mk).length;
 
-      return { key: mk, label, vkladCZK: vkladMesicCZK, ziskCZK, pct, writeCount, buyCount, closedCount };
+      return { key: mk, label, vkladCZK: vkladKumCZK, ziskCZK, pct, writeCount, buyCount, closedCount };
     });
   }
 
@@ -4216,13 +4212,13 @@ const VYPIS = (() => {
   const nakupWord = n => n === 1 ? 'nákup' : (n >= 2 && n <= 4 ? 'nákupy' : 'nákupů');
   const pozWord = n => n === 1 ? 'uzavřená pozice' : (n >= 2 && n <= 4 ? 'uzavřené pozice' : 'uzavřených pozic');
 
-  function statsRow(s) {
+  function statsRow(s, vkladLabel) {
     const cls = s.ziskCZK > 0 ? 'pos' : s.ziskCZK < 0 ? 'neg' : '';
     const countLabel = `${s.writeCount} ${vypisWord(s.writeCount)}${s.buyCount ? ` • ${s.buyCount} ${nakupWord(s.buyCount)}` : ''}${s.closedCount ? ` • ${s.closedCount} ${pozWord(s.closedCount)}` : ''}`;
     return `<div class="opc-yearly-row">
       <span class="opc-yearly-year">${s.label}${countLabel ? `<span class="opc-yearly-count">${countLabel}</span>` : ''}</span>
       <span class="opc-yearly-vals">
-        <span class="opc-yearly-gain">vklad ${fmt(s.vkladCZK)}</span>
+        <span class="opc-yearly-gain">${vkladLabel || 'vklad'} ${fmt(s.vkladCZK)}</span>
         <span class="opc-yearly-gain ${cls}">${fmtSign(s.ziskCZK)}</span>
         <span class="opc-yearly-pct ${cls}">${s.pct == null ? '—' : fmtPct(s.pct)}</span>
       </span>
@@ -4254,7 +4250,7 @@ const VYPIS = (() => {
       if (!data.statsMonthYear || !years.includes(data.statsMonthYear)) data.statsMonthYear = years[years.length - 1];
       const yearSelect = `<select class="opc-yearly-yearsel" onchange="VYPIS.setStatsMonthYear(this.value)">${years.map(y => `<option value="${y}"${y === data.statsMonthYear ? ' selected' : ''}>${y}</option>`).join('')}</select>`;
       const months = computeMonthlyStats(data.statsMonthYear);
-      el.innerHTML = `<div class="opc-yearly-header"><div class="opc-yearly-title">Měsíční statistika</div>${toggle}</div>${yearSelect}` + months.map(statsRow).join('');
+      el.innerHTML = `<div class="opc-yearly-header"><div class="opc-yearly-title">Měsíční statistika</div>${toggle}</div>${yearSelect}` + months.map(m => statsRow(m, 'vklad celkem')).join('');
     } else {
       const rows = computeYearlyStats();
       el.innerHTML = `<div class="opc-yearly-header"><div class="opc-yearly-title">Roční statistika</div>${toggle}</div>` + rows.map(statsRow).join('');
