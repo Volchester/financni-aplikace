@@ -4133,79 +4133,70 @@ const VYPIS = (() => {
     return [...years].sort();
   }
 
-  function computeYearlyStats() {
-    const yearOf = d => String(d || '').slice(0, 4);
-    const currentYear = String(new Date().getFullYear());
-    const years = statsYearsList();
-    if (!years.length) return [];
+  // Společný výpočet pro roční i měsíční pohled. Prochází období chronologicky
+  // a počítá zhodnocení ne z pouhého vkladu, ale z aktuální hodnoty účtu
+  // (kumulativní vklad + zisk nahromaděný do konce předchozího období) —
+  // tj. zisky se "reinvestují" a další období se zhodnocují i z nich.
+  function buildStatsSeries(periods, periodOf, isCurrentPeriod) {
+    let vkladKumCZK = 0;
+    let ziskKumPrevCZK = 0;
+    return periods.map(pk => {
+      const vklad = { CZK: 0, USD: 0, EUR: 0 };
+      data.moves.forEach(m => { if (periodOf(m.date) === pk) vklad[m.currency] += (m.type === 'out' ? -m.amount : m.amount); });
 
-    return years.map(y => {
-      const vkladRok = { CZK: 0, USD: 0, EUR: 0 };
-      data.moves.forEach(m => { if (yearOf(m.date) === y) vkladRok[m.currency] += (m.type === 'out' ? -m.amount : m.amount); });
-
-      const vkladKum = { CZK: 0, USD: 0, EUR: 0 };
-      data.moves.forEach(m => { if (yearOf(m.date) <= y) vkladKum[m.currency] += (m.type === 'out' ? -m.amount : m.amount); });
-
-      const ziskRok = { CZK: 0, USD: 0, EUR: 0 };
+      const zisk = { CZK: 0, USD: 0, EUR: 0 };
       data.writes.forEach(w => {
-        if (yearOf(w.date) === y) ziskRok[w.currency] += w.premium * 100 * w.qty - (w.fees || 0);
-        if (w.status === 'closed' && w.closeDate && yearOf(w.closeDate) === y) ziskRok[w.currency] -= (w.closePrice || 0);
+        if (periodOf(w.date) === pk) zisk[w.currency] += w.premium * 100 * w.qty - (w.fees || 0);
+        if (w.status === 'closed' && w.closeDate && periodOf(w.closeDate) === pk) zisk[w.currency] -= (w.closePrice || 0);
       });
       data.buys.forEach(b => {
-        if (yearOf(b.date) === y) ziskRok[b.currency] -= costOfBuy(b);
-        if (b.status === 'closed' && b.closeDate && yearOf(b.closeDate) === y) ziskRok[b.currency] += (b.closePrice || 0);
+        if (periodOf(b.date) === pk) zisk[b.currency] -= costOfBuy(b);
+        if (b.status === 'closed' && b.closeDate && periodOf(b.closeDate) === pk) zisk[b.currency] += (b.closePrice || 0);
       });
-      data.portfolio.forEach(p => { if (p.status === 'closed' && yearOf(p.closeDate) === y) ziskRok[p.currency] += (p.closePrice - p.costBasis) * p.qty; });
-      if (y === currentYear) {
-        data.portfolio.forEach(p => { if (p.status === 'open') ziskRok[p.currency] += (p.currentPrice - p.costBasis) * p.qty; });
+      data.portfolio.forEach(p => { if (p.status === 'closed' && periodOf(p.closeDate) === pk) zisk[p.currency] += (p.closePrice - p.costBasis) * p.qty; });
+      if (isCurrentPeriod(pk)) {
+        data.portfolio.forEach(p => { if (p.status === 'open') zisk[p.currency] += (p.currentPrice - p.costBasis) * p.qty; });
       }
 
-      const vkladRokCZK = toCZK(vkladRok);
-      const vkladKumCZK = toCZK(vkladKum);
-      const ziskCZK = toCZK(ziskRok);
-      const pct = vkladKumCZK > 0 ? (ziskCZK / vkladKumCZK * 100) : null;
-      const writeCount = data.writes.filter(w => yearOf(w.date) === y).length;
-      const buyCount = data.buys.filter(b => yearOf(b.date) === y).length;
-      const closedCount = data.portfolio.filter(p => p.status === 'closed' && yearOf(p.closeDate) === y).length;
+      const vkladPeriodCZK = toCZK(vklad);
+      vkladKumCZK += vkladPeriodCZK;
+      const ziskCZK = toCZK(zisk);
+      const pctBaseCZK = vkladKumCZK + ziskKumPrevCZK;
+      const pct = pctBaseCZK > 0 ? (ziskCZK / pctBaseCZK * 100) : null;
+      ziskKumPrevCZK += ziskCZK;
 
-      return { key: y, label: y, vkladCZK: vkladRokCZK, ziskCZK, pct, writeCount, buyCount, closedCount };
+      const writeCount = data.writes.filter(w => periodOf(w.date) === pk).length;
+      const buyCount = data.buys.filter(b => periodOf(b.date) === pk).length;
+      const closedCount = data.portfolio.filter(p => p.status === 'closed' && periodOf(p.closeDate) === pk).length;
+
+      return { key: pk, vkladPeriodCZK, vkladKumCZK, ziskCZK, pct, writeCount, buyCount, closedCount };
     });
   }
 
-  // Stejná logika jako computeYearlyStats, jen po měsících vybraného roku (leden–prosinec)
+  function computeYearlyStats() {
+    const years = statsYearsList();
+    if (!years.length) return [];
+    const currentYear = String(new Date().getFullYear());
+    return buildStatsSeries(years, d => String(d || '').slice(0, 4), y => y === currentYear)
+      .map(r => ({ ...r, label: r.key, vkladCZK: r.vkladPeriodCZK }));
+  }
+
+  // Stejná logika jako computeYearlyStats, jen po měsících vybraného roku (leden–prosinec).
+  // Kumulativní vklad i zisk (základ pro %) se počítají od úplně první aktivity
+  // v datech, ne jen od začátku vybraného roku — jinak by zhodnocení v lednu
+  // vybraného roku nenavazovalo na prosinec toho předchozího.
   function computeMonthlyStats(year) {
     const monthOf = d => String(d || '').slice(0, 7);
     const nowMonth = todayISO().slice(0, 7);
-
-    return MESICE_LABELS.map((label, i) => {
-      const mk = `${year}-${String(i + 1).padStart(2, '0')}`;
-
-      const vkladKum = { CZK: 0, USD: 0, EUR: 0 };
-      data.moves.forEach(m => { if (monthOf(m.date) <= mk) vkladKum[m.currency] += (m.type === 'out' ? -m.amount : m.amount); });
-
-      const ziskMesic = { CZK: 0, USD: 0, EUR: 0 };
-      data.writes.forEach(w => {
-        if (monthOf(w.date) === mk) ziskMesic[w.currency] += w.premium * 100 * w.qty - (w.fees || 0);
-        if (w.status === 'closed' && w.closeDate && monthOf(w.closeDate) === mk) ziskMesic[w.currency] -= (w.closePrice || 0);
-      });
-      data.buys.forEach(b => {
-        if (monthOf(b.date) === mk) ziskMesic[b.currency] -= costOfBuy(b);
-        if (b.status === 'closed' && b.closeDate && monthOf(b.closeDate) === mk) ziskMesic[b.currency] += (b.closePrice || 0);
-      });
-      data.portfolio.forEach(p => { if (p.status === 'closed' && monthOf(p.closeDate) === mk) ziskMesic[p.currency] += (p.closePrice - p.costBasis) * p.qty; });
-      if (mk === nowMonth) {
-        data.portfolio.forEach(p => { if (p.status === 'open') ziskMesic[p.currency] += (p.currentPrice - p.costBasis) * p.qty; });
-      }
-
-      const vkladKumCZK = toCZK(vkladKum);
-      const ziskCZK = toCZK(ziskMesic);
-      const pct = vkladKumCZK > 0 ? (ziskCZK / vkladKumCZK * 100) : null;
-      const writeCount = data.writes.filter(w => monthOf(w.date) === mk).length;
-      const buyCount = data.buys.filter(b => monthOf(b.date) === mk).length;
-      const closedCount = data.portfolio.filter(p => p.status === 'closed' && monthOf(p.closeDate) === mk).length;
-
-      return { key: mk, label, vkladCZK: vkladKumCZK, ziskCZK, pct, writeCount, buyCount, closedCount };
-    });
+    const years = statsYearsList().map(Number);
+    const startYear = Math.min(Number(year), ...(years.length ? years : [Number(year)]));
+    const allMonths = [];
+    for (let y = startYear; y <= Number(year); y++) {
+      for (let m = 1; m <= 12; m++) allMonths.push(`${y}-${String(m).padStart(2, '0')}`);
+    }
+    return buildStatsSeries(allMonths, monthOf, mk => mk === nowMonth)
+      .filter(r => r.key.slice(0, 4) === String(year))
+      .map(r => ({ ...r, label: MESICE_LABELS[Number(r.key.slice(5, 7)) - 1], vkladCZK: r.vkladKumCZK }));
   }
 
   const vypisWord = n => n === 1 ? 'výpis' : (n >= 2 && n <= 4 ? 'výpisy' : 'výpisů');
@@ -4253,7 +4244,7 @@ const VYPIS = (() => {
       el.innerHTML = `<div class="opc-yearly-header"><div class="opc-yearly-title">Měsíční statistika</div>${toggle}</div>${yearSelect}` + months.map(m => statsRow(m, 'vklad celkem')).join('');
     } else {
       const rows = computeYearlyStats();
-      el.innerHTML = `<div class="opc-yearly-header"><div class="opc-yearly-title">Roční statistika</div>${toggle}</div>` + rows.map(statsRow).join('');
+      el.innerHTML = `<div class="opc-yearly-header"><div class="opc-yearly-title">Roční statistika</div>${toggle}</div>` + rows.map(r => statsRow(r)).join('');
     }
   }
 
