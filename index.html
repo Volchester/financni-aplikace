@@ -1187,8 +1187,8 @@
   <div id="view-opce" style="display:none">
 
     <div class="opc-subtabs">
-      <button class="opc-subtab active" data-opcsub="nakup">Nákup</button>
-      <button class="opc-subtab" data-opcsub="vypis">Výpis</button>
+      <button class="opc-subtab active" data-opcsub="nakup">XTB</button>
+      <button class="opc-subtab" data-opcsub="vypis">IBKR</button>
     </div>
 
     <div id="opc-sub-nakup">
@@ -1294,9 +1294,10 @@
 
       <div class="card" style="margin-bottom:8px">
         <div class="app-header">
-          <span class="app-title">Účet a výpisy</span>
+          <span class="app-title">Účet a obchody</span>
           <button class="btn" id="vy-btnAddCash">+ Přidat peníze</button>
           <button class="btn btn-primary" id="vy-btnAddWrite">+ Přidat výpis</button>
+          <button class="btn btn-primary" id="vy-btnAddBuy">+ Přidat nákup</button>
         </div>
       </div>
 
@@ -1356,6 +1357,36 @@
         </div>
       </div>
 
+      <div class="card" id="vy-buyForm" style="display:none">
+        <div class="opc-fields">
+          <div class="opc-field"><label>Ticker akcie</label><input type="text" id="vy-bTicker" placeholder="AAPL" autocapitalize="characters"></div>
+          <div class="opc-field"><label>Typ</label>
+            <div class="opc-seg" id="vy-bType">
+              <button type="button" class="call active" data-type="call">Call</button>
+              <button type="button" class="put" data-type="put">Put</button>
+            </div>
+          </div>
+          <div class="opc-field"><label>Strike cena</label><input type="number" id="vy-bStrike" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+          <div class="opc-field"><label>Dní do expirace</label><input type="number" id="vy-bDays" inputmode="numeric" min="1" placeholder="0"></div>
+          <div class="opc-field"><label>Prémium na 1 akcii</label><input type="number" id="vy-bPremium" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+          <div class="opc-field"><label>Počet kontraktů</label><input type="number" id="vy-bQty" inputmode="numeric" min="1" value="1"></div>
+          <div class="opc-field"><label>Poplatky (celkem)</label><input type="number" id="vy-bFees" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+          <div class="opc-field"><label>Měna</label>
+            <select id="vy-bCurrency">
+              <option value="CZK">CZK</option>
+              <option value="USD" selected>USD</option>
+              <option value="EUR">EUR</option>
+            </select>
+          </div>
+          <div class="opc-field"><label>Datum</label><input type="date" id="vy-bDate"></div>
+        </div>
+        <div class="opc-meta" id="vy-bPreview">Náklad celkem: —</div>
+        <div class="opc-actions">
+          <button class="btn btn-primary" id="vy-bSave">Uložit nákup</button>
+          <button class="btn" id="vy-bCancel">Zrušit</button>
+        </div>
+      </div>
+
       <div class="card" style="margin:16px 0 8px">
         <div class="app-header"><span class="app-title">Aktivní výpisy</span></div>
       </div>
@@ -1365,6 +1396,16 @@
         <div class="app-header"><span class="app-title">Uzavřené výpisy</span></div>
       </div>
       <div id="vy-closedList"></div>
+
+      <div class="card" style="margin:16px 0 8px">
+        <div class="app-header"><span class="app-title">Aktivní nákupy</span></div>
+      </div>
+      <div id="vy-activeBuyList"></div>
+
+      <div class="card" style="margin:16px 0 8px">
+        <div class="app-header"><span class="app-title">Uzavřené nákupy</span></div>
+      </div>
+      <div id="vy-closedBuyList"></div>
 
       <div class="card" style="margin:16px 0 8px">
         <div class="app-header"><span class="app-title">Portfolio z uplatněných opcí</span></div>
@@ -3887,24 +3928,28 @@ const OPCE = (() => {
 const VYPIS = (() => {
   const STORAGE_KEY = 'opce_vypis_data';
   const CURRENCIES = ['CZK', 'USD', 'EUR'];
-  let data = { rates: { USD: 0, EUR: 0 }, moves: [], writes: [], portfolio: [] };
+  let data = { rates: { USD: 0, EUR: 0 }, moves: [], writes: [], buys: [], portfolio: [] };
   const expanded = {};
   let cType = 'in';
   let wType = 'put';
+  let bType = 'call';
   let assigningId = null;
   let sellingId = null;
   let closingId = null;
+  let exercisingId = null;
+  let buyClosingId = null;
 
   function initData() {
     try {
       const s = localStorage.getItem(STORAGE_KEY);
-      if (s) data = Object.assign({ rates: { USD: 0, EUR: 0 }, moves: [], writes: [], portfolio: [] }, JSON.parse(s));
+      if (s) data = Object.assign({ rates: { USD: 0, EUR: 0 }, moves: [], writes: [], buys: [], portfolio: [] }, JSON.parse(s));
     } catch(e) {}
     if (!data.rates || typeof data.rates !== 'object') data.rates = {};
     if (!(data.rates.USD > 0)) data.rates.USD = data.rates.USD || 0;
     if (!(data.rates.EUR > 0)) data.rates.EUR = data.rates.EUR || 0;
     if (!Array.isArray(data.moves)) data.moves = [];
     if (!Array.isArray(data.writes)) data.writes = [];
+    if (!Array.isArray(data.buys)) data.buys = [];
     if (!Array.isArray(data.portfolio)) data.portfolio = [];
   }
   function saveData() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); showStatus(); } catch(e) {} }
@@ -3966,8 +4011,35 @@ const VYPIS = (() => {
   const fmtPct = p => (p > 0 ? '+' : '') + p.toFixed(1).replace('.', ',') + ' %';
 
   function findWrite(id) { return data.writes.find(w => w.id === id); }
+  function findBuy(id) { return data.buys.find(b => b.id === id); }
   function findPos(id) { return data.portfolio.find(p => p.id === id); }
   function rateOf(cur) { return cur === 'CZK' ? 1 : (data.rates[cur] || 0); }
+
+  /* ── Nákupy opcí (dlouhé pozice) — zrcadlo výpisů, ale prémium se platí, ne přijímá ── */
+  // Celkové náklady na nákup (zaplacené prémium + poplatky)
+  function costOfBuy(b) { return b.premium * 100 * (b.qty || 1) + (b.fees || 0); }
+  // Skutečný počet dní držení — do prodeje/uplatnění, nebo do expirace
+  function daysHeldBuy(b) {
+    const endDate = b.status === 'closed' ? b.closeDate : b.status === 'exercised' ? b.exercisedDate : null;
+    if (endDate && b.date) {
+      const diff = Math.round((new Date(endDate) - new Date(b.date)) / 86400000);
+      return diff > 0 ? diff : 1;
+    }
+    return b.days;
+  }
+  // Čistý zisk/ztráta z prodeje nebo expirace nakoupené opce (u uplatnění se náklady přenášejí do pozice)
+  function netProfitOfBuy(b) { return (b.status === 'closed' ? (b.closePrice || 0) : 0) - costOfBuy(b); }
+  function tradePctBuy(b) {
+    const cost = costOfBuy(b);
+    if (!(cost > 0) || b.status !== 'closed') return null;
+    return netProfitOfBuy(b) / cost * 100;
+  }
+  function annualPctOfBuy(b) {
+    const tp = tradePctBuy(b);
+    const dh = daysHeldBuy(b);
+    if (tp == null || !(dh > 0)) return null;
+    return tp / dh * 365;
+  }
 
   /* ── Výpočty zůstatku (hotovost + portfolio), po měnách ── */
   function cashByCurrency() {
@@ -3980,6 +4052,15 @@ const VYPIS = (() => {
         else bal[w.currency] -= w.strike * 100 * w.qty;
       } else if (w.status === 'closed') {
         bal[w.currency] -= (w.closePrice || 0);
+      }
+    });
+    data.buys.forEach(b => {
+      bal[b.currency] -= costOfBuy(b);
+      if (b.status === 'exercised') {
+        if (b.type === 'call') bal[b.currency] -= b.strike * 100 * b.qty;
+        else bal[b.currency] += b.strike * 100 * b.qty;
+      } else if (b.status === 'closed') {
+        bal[b.currency] += (b.closePrice || 0);
       }
     });
     data.portfolio.forEach(p => {
@@ -4041,6 +4122,7 @@ const VYPIS = (() => {
     const years = new Set();
     data.moves.forEach(m => { if (m.date) years.add(yearOf(m.date)); });
     data.writes.forEach(w => { if (w.date) years.add(yearOf(w.date)); });
+    data.buys.forEach(b => { if (b.date) years.add(yearOf(b.date)); });
     data.portfolio.forEach(p => { if (p.status === 'closed' && p.closeDate) years.add(yearOf(p.closeDate)); });
     if (!years.size) return [];
 
@@ -4056,6 +4138,10 @@ const VYPIS = (() => {
         if (yearOf(w.date) === y) ziskRok[w.currency] += w.premium * 100 * w.qty - (w.fees || 0);
         if (w.status === 'closed' && w.closeDate && yearOf(w.closeDate) === y) ziskRok[w.currency] -= (w.closePrice || 0);
       });
+      data.buys.forEach(b => {
+        if (yearOf(b.date) === y) ziskRok[b.currency] -= costOfBuy(b);
+        if (b.status === 'closed' && b.closeDate && yearOf(b.closeDate) === y) ziskRok[b.currency] += (b.closePrice || 0);
+      });
       data.portfolio.forEach(p => { if (p.status === 'closed' && yearOf(p.closeDate) === y) ziskRok[p.currency] += (p.closePrice - p.costBasis) * p.qty; });
       if (y === currentYear) {
         data.portfolio.forEach(p => { if (p.status === 'open') ziskRok[p.currency] += (p.currentPrice - p.costBasis) * p.qty; });
@@ -4066,13 +4152,15 @@ const VYPIS = (() => {
       const ziskCZK = toCZK(ziskRok);
       const pct = vkladKumCZK > 0 ? (ziskCZK / vkladKumCZK * 100) : null;
       const writeCount = data.writes.filter(w => yearOf(w.date) === y).length;
+      const buyCount = data.buys.filter(b => yearOf(b.date) === y).length;
       const closedCount = data.portfolio.filter(p => p.status === 'closed' && yearOf(p.closeDate) === y).length;
 
-      return { year: y, vkladRokCZK, ziskCZK, pct, writeCount, closedCount };
+      return { year: y, vkladRokCZK, ziskCZK, pct, writeCount, buyCount, closedCount };
     });
   }
 
   const vypisWord = n => n === 1 ? 'výpis' : (n >= 2 && n <= 4 ? 'výpisy' : 'výpisů');
+  const nakupWord = n => n === 1 ? 'nákup' : (n >= 2 && n <= 4 ? 'nákupy' : 'nákupů');
   const pozWord = n => n === 1 ? 'uzavřená pozice' : (n >= 2 && n <= 4 ? 'uzavřené pozice' : 'uzavřených pozic');
 
   function renderYearly() {
@@ -4082,7 +4170,7 @@ const VYPIS = (() => {
     el.style.display = '';
     el.innerHTML = '<div class="opc-yearly-title">Roční statistika</div>' + years.map(y => {
       const cls = y.ziskCZK > 0 ? 'pos' : y.ziskCZK < 0 ? 'neg' : '';
-      const countLabel = `${y.writeCount} ${vypisWord(y.writeCount)}${y.closedCount ? ` • ${y.closedCount} ${pozWord(y.closedCount)}` : ''}`;
+      const countLabel = `${y.writeCount} ${vypisWord(y.writeCount)}${y.buyCount ? ` • ${y.buyCount} ${nakupWord(y.buyCount)}` : ''}${y.closedCount ? ` • ${y.closedCount} ${pozWord(y.closedCount)}` : ''}`;
       return `<div class="opc-yearly-row">
         <span class="opc-yearly-year">${y.year}<span class="opc-yearly-count">${countLabel}</span></span>
         <span class="opc-yearly-vals">
@@ -4245,13 +4333,167 @@ const VYPIS = (() => {
       : '<div class="card"><div class="opc-empty">Zatím žádné uzavřené výpisy.</div></div>';
   }
 
+  /* ── Seznam nákupů opcí ── */
+  function buyCard(b) {
+      const ap = annualPctOfBuy(b);
+      const tp = tradePctBuy(b);
+      const netProfit = netProfitOfBuy(b);
+      const cls = tp == null ? '' : (tp >= 0 ? 'pos' : 'neg');
+      const isPut = b.type === 'put';
+      const exercised = b.status === 'exercised';
+      const closed = b.status === 'closed';
+      const pending = isPending(b);
+      const dl = daysLeftOf(b);
+      const expDate = expDateOf(b);
+      const cost = costOfBuy(b);
+
+      let actionBlock;
+      if (buyClosingId === b.id) {
+        actionBlock = `
+          <div class="opc-close-form">
+            <div class="opc-close-title">Prodej opce</div>
+            <div class="opc-fields">
+              <div class="opc-field"><label>Prodejní cena (celkem, ${b.currency})</label><input type="number" id="vy-bClosePrice" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+              <div class="opc-field"><label>Datum</label><input type="date" id="vy-bCloseDate" value="${todayISO()}"></div>
+            </div>
+            <div class="opc-meta">Cena se připíše k zůstatku účtu a přepočítá zhodnocení obchodu za skutečnou dobu držení.</div>
+            <div class="opc-actions">
+              <button class="btn btn-primary" onclick="VYPIS.confirmCloseBuy('${b.id}')">Potvrdit prodej</button>
+              <button class="btn" onclick="VYPIS.cancelCloseBuy()">Zpět</button>
+            </div>
+          </div>`;
+      } else if (exercisingId === b.id) {
+        if (!isPut) {
+          actionBlock = `
+          <div class="opc-close-form">
+            <div class="opc-close-title">Potvrdit uplatnění opce</div>
+            <div class="opc-meta">Do portfolia přibude ${b.qty * 100} ks ${esc(b.ticker)} s náklady ${fmtCur(b.strike + b.premium, b.currency)} / ks (strike + zaplacené prémium).</div>
+            <div class="opc-actions">
+              <button class="btn btn-primary" onclick="VYPIS.confirmExerciseBuy('${b.id}')">Potvrdit uplatnění</button>
+              <button class="btn" onclick="VYPIS.cancelExerciseBuy()">Zpět</button>
+            </div>
+          </div>`;
+        } else {
+          const eligible = data.portfolio.filter(p => p.status === 'open' && p.ticker === b.ticker && p.qty === b.qty * 100);
+          actionBlock = !eligible.length ? `
+          <div class="opc-close-form">
+            <div class="opc-close-title">Uplatnění opce</div>
+            <div class="opc-meta">V portfoliu nemáš otevřenou pozici ${esc(b.ticker)} s přesně ${b.qty * 100} ks, kterou by šlo touto put opcí prodat.</div>
+            <div class="opc-actions"><button class="btn" onclick="VYPIS.cancelExerciseBuy()">Zpět</button></div>
+          </div>` : `
+          <div class="opc-close-form">
+            <div class="opc-close-title">Potvrdit uplatnění opce</div>
+            <div class="opc-fields">
+              <div class="opc-field"><label>Pozice v portfoliu k prodeji</label>
+                <select id="vy-buyExerciseLot">
+                  ${eligible.map(p => `<option value="${p.id}">${esc(p.ticker)} • ${p.qty} ks • nákup ${fmtCur(p.costBasis, p.currency)}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+            <div class="opc-meta">Akcie se prodají za ${fmtCur(b.strike, b.currency)} / ks, hotovost se zvýší.</div>
+            <div class="opc-actions">
+              <button class="btn btn-primary" onclick="VYPIS.confirmExerciseBuy('${b.id}')">Potvrdit uplatnění</button>
+              <button class="btn" onclick="VYPIS.cancelExerciseBuy()">Zpět</button>
+            </div>
+          </div>`;
+        }
+      } else if (exercised) {
+        actionBlock = `
+          <div class="opc-meta">Uplatněno ${fmtD(b.exercisedDate)}</div>
+          <div class="opc-actions"><button class="btn btn-danger" onclick="VYPIS.delBuy('${b.id}')">Smazat</button></div>`;
+      } else if (closed) {
+        actionBlock = `
+          <div class="opc-meta">${b.expired ? `Expirovala bez hodnoty ${fmtD(b.closeDate)}` : `Prodáno ${fmtD(b.closeDate)} za ${fmtCur(b.closePrice || 0, b.currency)}`}</div>
+          <div class="opc-actions"><button class="btn btn-danger" onclick="VYPIS.delBuy('${b.id}')">Smazat</button></div>`;
+      } else {
+        actionBlock = `
+          ${pending ? '<div class="opc-meta">Expirace proběhla, ale nákup ještě nemáš vypořádaný — rozhodni, jestli byla opce uplatněna, nebo ji uzavři/expiruj s nulovou hodnotou.</div>' : ''}
+          <div class="opc-actions">
+            <button class="btn btn-primary" onclick="VYPIS.startExerciseBuy('${b.id}')">Uplatnit opci</button>
+            <button class="btn" onclick="VYPIS.startCloseBuy('${b.id}')">Prodej opce</button>
+            <button class="btn" onclick="VYPIS.expireBuy('${b.id}')">Expirovala bez hodnoty (0)</button>
+            <button class="btn btn-danger" onclick="VYPIS.delBuy('${b.id}')">Smazat</button>
+          </div>`;
+      }
+
+      const subInfo = pending
+        ? `expirovala ${fmtD(expDate)} • strike ${fmtCur(b.strike, b.currency)}`
+        : exercised ? `strike ${fmtCur(b.strike, b.currency)} • uplatněno • dnů: ${daysHeldBuy(b)}`
+        : closed ? `strike ${fmtCur(b.strike, b.currency)} • ${b.expired ? 'expirovala' : 'prodáno'} • dnů: ${daysHeldBuy(b)}`
+        : `strike ${fmtCur(b.strike, b.currency)} • prémium ${fmtCur(b.premium * 100 * b.qty, b.currency)}`;
+
+      const badge = pending
+        ? `<span class="opc-dleft hot">čeká na vypořádání</span>`
+        : exercised
+        ? `<span class="opc-dleft ok">uplatněno</span>`
+        : closed
+        ? `<span class="opc-profit ${cls}">${ap == null ? '—' : fmtPct(ap) + ' p.a.'}${tp == null ? '' : ` <small>(${fmtPct(tp)})</small>`}</span>`
+        : `<span class="opc-dleft ${dleftClass(dl)}">zbývá ${dl} ${dniWord(dl)}</span>`;
+
+      return `
+      <div class="opc-card${expanded['b-' + b.id] ? ' open' : ''}">
+        <div class="opc-card-header" onclick="VYPIS.toggleBuy('${b.id}')">
+          <div class="opc-card-info">
+            <span class="opc-type ${isPut ? 'put' : 'call'}">${isPut ? 'PUT' : 'CALL'}</span>
+            <span class="opc-ticker">${esc(b.ticker)}</span>
+            <span class="opc-card-sub">${subInfo}</span>
+          </div>
+          ${badge}
+          ${CHEVRON}
+        </div>
+        <div class="opc-card-body">
+          <div class="opc-rows">
+            <div class="opc-row"><span class="opc-row-label">Datum nákupu</span><span class="opc-row-value">${fmtD(b.date)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Strike</span><span class="opc-row-value">${fmtCur(b.strike, b.currency)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Dní do expirace (při nákupu)</span><span class="opc-row-value">${b.days} ${dniWord(b.days)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Datum expirace</span><span class="opc-row-value${pending ? ' neg' : ''}">${fmtD(expDate)}${b.status === 'open' ? (pending ? ` • expirovalo před ${Math.abs(dl)} ${dniWord(Math.abs(dl))}` : ` • zbývá ${dl} ${dniWord(dl)}`) : ''}</span></div>
+            ${(closed || exercised) ? `<div class="opc-row"><span class="opc-row-label">Doba držení</span><span class="opc-row-value">${daysHeldBuy(b)} ${dniWord(daysHeldBuy(b))}</span></div>` : ''}
+            <div class="opc-row"><span class="opc-row-label">Prémium na akcii</span><span class="opc-row-value">${fmtCur(b.premium, b.currency)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Počet kontraktů</span><span class="opc-row-value">${b.qty || 1}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Prémium celkem</span><span class="opc-row-value neg">−${fmtCur(b.premium * 100 * b.qty, b.currency)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Náklady po poplatcích</span><span class="opc-row-value neg">−${fmtCur(cost, b.currency)}</span></div>
+            ${closed ? `<div class="opc-row"><span class="opc-row-label">Prodejní cena opce</span><span class="opc-row-value pos">${fmtCur(b.closePrice || 0, b.currency)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Čistý zisk</span><span class="opc-row-value ${netProfit >= 0 ? 'pos' : 'neg'}">${fmtSignCur(netProfit, b.currency)}</span></div>` : ''}
+            ${exercised ? `<div class="opc-row"><span class="opc-row-label">Poznámka</span><span class="opc-row-value">Náklady (strike + prémium) přeneseny do pozice v portfoliu.</span></div>` : ''}
+            <div class="opc-row"><span class="opc-row-label">Zhodnocení obchodu</span><span class="opc-row-value ${cls}">${tp == null ? '—' : fmtPct(tp)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">Roční zhodnocení</span><span class="opc-row-value ${cls}">${ap == null ? '—' : fmtPct(ap)}</span></div>
+          </div>
+          <div class="opc-fields">
+            <div class="opc-field"><label>Poplatky (celkem, ${b.currency})</label><input type="number" inputmode="decimal" step="0.01" min="0" value="${b.fees || 0}" onclick="event.stopPropagation()" onchange="VYPIS.updFeesBuy('${b.id}', this.value)"></div>
+          </div>
+          ${actionBlock}
+        </div>
+      </div>`;
+  }
+
+  function renderBuys() {
+    const activeWrap = document.getElementById('vy-activeBuyList');
+    const closedWrap = document.getElementById('vy-closedBuyList');
+    const active = data.buys.filter(b => b.status === 'open' && !isPending(b))
+      .sort((a, b) => String(expDateOf(a)||'').localeCompare(String(expDateOf(b)||'')));
+    const closedList = data.buys.filter(b => b.status !== 'open' || isPending(b))
+      .sort((a, b) => {
+        const ka = a.closeDate || a.exercisedDate || (isPending(a) ? expDateOf(a) : a.date) || a.date;
+        const kb = b.closeDate || b.exercisedDate || (isPending(b) ? expDateOf(b) : b.date) || b.date;
+        return String(kb||'').localeCompare(String(ka||''));
+      });
+
+    activeWrap.innerHTML = active.length
+      ? active.map(buyCard).join('')
+      : '<div class="card"><div class="opc-empty">Žádné aktivní nákupy. Přidej je tlačítkem „+ Přidat nákup“.</div></div>';
+
+    closedWrap.innerHTML = closedList.length
+      ? closedList.map(buyCard).join('')
+      : '<div class="card"><div class="opc-empty">Zatím žádné uzavřené nákupy.</div></div>';
+  }
+
   /* ── Portfolio z uplatněných opcí ── */
   function renderPortfolio() {
     const wrap = document.getElementById('vy-portfolioList');
     const open = data.portfolio.filter(p => p.status === 'open').sort((a,b) => String(b.openDate||'').localeCompare(String(a.openDate||'')));
     const closed = data.portfolio.filter(p => p.status === 'closed').sort((a,b) => String(b.closeDate||'').localeCompare(String(a.closeDate||'')));
     if (!open.length && !closed.length) {
-      wrap.innerHTML = '<div class="card"><div class="opc-empty">Zatím žádné akcie v portfoliu. Přibudou po uplatnění (assignmentu) vypsané opce.</div></div>';
+      wrap.innerHTML = '<div class="card"><div class="opc-empty">Zatím žádné akcie v portfoliu. Přibudou po uplatnění (assignmentu) vypsané opce, nebo po uplatnění nakoupené opce.</div></div>';
       return;
     }
     const openHtml = open.map(p => {
@@ -4289,9 +4531,9 @@ const VYPIS = (() => {
             <div class="opc-field"><label>Aktuální cena / ks</label><input type="number" inputmode="decimal" step="0.01" min="0" value="${p.currentPrice}" onchange="VYPIS.updPrice('${p.id}', this.value)"></div>
           </div>
           <div class="opc-rows">
-            <div class="opc-row"><span class="opc-row-label">Datum (assignment)</span><span class="opc-row-value">${fmtD(p.openDate)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">${p.sourceBuyId ? 'Datum (uplatnění)' : 'Datum (assignment)'}</span><span class="opc-row-value">${fmtD(p.openDate)}</span></div>
             <div class="opc-row"><span class="opc-row-label">Počet kusů</span><span class="opc-row-value">${p.qty}</span></div>
-            <div class="opc-row"><span class="opc-row-label">Nákupní cena (strike)</span><span class="opc-row-value">${fmtCur(p.costBasis, p.currency)}</span></div>
+            <div class="opc-row"><span class="opc-row-label">${p.sourceBuyId ? 'Nákupní cena (strike + prémium)' : 'Nákupní cena (strike)'}</span><span class="opc-row-value">${fmtCur(p.costBasis, p.currency)}</span></div>
             <div class="opc-row"><span class="opc-row-label">Aktuální hodnota</span><span class="opc-row-value">${fmtCur(p.currentPrice * p.qty, p.currency)}</span></div>
             <div class="opc-row"><span class="opc-row-label">Nerealizovaný zisk/ztráta</span><span class="opc-row-value ${cls}">${fmtSignCur(pl, p.currency)}</span></div>
           </div>
@@ -4330,7 +4572,7 @@ const VYPIS = (() => {
     }).join('') + '</div></div>';
   }
 
-  function refresh() { renderHero(); renderWrites(); renderPortfolio(); renderMoves(); renderYearly(); }
+  function refresh() { renderHero(); renderWrites(); renderBuys(); renderPortfolio(); renderMoves(); renderYearly(); }
 
   /* ── Kurzy ── */
   function updateRateInputs() {
@@ -4360,6 +4602,7 @@ const VYPIS = (() => {
     document.getElementById('vy-cashForm').style.display = show ? '' : 'none';
     if (!show) return;
     toggleWriteForm(false);
+    toggleBuyForm(false);
     cType = 'in'; syncCType();
     document.getElementById('vy-cDate').value = todayISO();
     document.getElementById('vy-cAmount').value = '';
@@ -4406,6 +4649,7 @@ const VYPIS = (() => {
     document.getElementById('vy-writeForm').style.display = show ? '' : 'none';
     if (!show) return;
     toggleCashForm(false);
+    toggleBuyForm(false);
     wType = 'put'; syncWType();
     document.getElementById('vy-wTicker').value = '';
     document.getElementById('vy-wStrike').value = '';
@@ -4438,6 +4682,63 @@ const VYPIS = (() => {
     });
     saveData();
     toggleWriteForm(false);
+    refresh();
+  }
+
+  /* ── Formulář: přidat nákup opce ── */
+  function syncBType() {
+    document.querySelectorAll('#vy-bType button').forEach(b => b.classList.toggle('active', b.dataset.type === bType));
+  }
+  function updateBuyPreview() {
+    const premium = parseFloat(document.getElementById('vy-bPremium').value) || 0;
+    const qty = Math.max(1, parseInt(document.getElementById('vy-bQty').value, 10) || 1);
+    const fees = parseFloat(document.getElementById('vy-bFees').value) || 0;
+    const currency = document.getElementById('vy-bCurrency').value;
+    const el = document.getElementById('vy-bPreview');
+    if (!(premium > 0)) { el.textContent = 'Náklad celkem: —'; return; }
+    const totalNative = premium * 100 * qty + fees;
+    let text = `Náklad celkem: ${fmtCur(totalNative, currency)}`;
+    const rate = rateOf(currency);
+    if (currency !== 'CZK' && rate > 0) text += ` (≈ ${fmt(totalNative * rate)})`;
+    el.textContent = text;
+  }
+  function toggleBuyForm(show) {
+    document.getElementById('vy-buyForm').style.display = show ? '' : 'none';
+    if (!show) return;
+    toggleCashForm(false);
+    toggleWriteForm(false);
+    bType = 'call'; syncBType();
+    document.getElementById('vy-bTicker').value = '';
+    document.getElementById('vy-bStrike').value = '';
+    document.getElementById('vy-bDays').value = '';
+    document.getElementById('vy-bPremium').value = '';
+    document.getElementById('vy-bQty').value = 1;
+    document.getElementById('vy-bFees').value = '';
+    document.getElementById('vy-bCurrency').value = 'USD';
+    document.getElementById('vy-bDate').value = todayISO();
+    updateBuyPreview();
+    document.getElementById('vy-bTicker').focus();
+  }
+  function saveBuy() {
+    const ticker = document.getElementById('vy-bTicker').value.trim().toUpperCase();
+    const type = bType;
+    const strike = parseFloat(document.getElementById('vy-bStrike').value);
+    const days = parseInt(document.getElementById('vy-bDays').value, 10);
+    const premium = parseFloat(document.getElementById('vy-bPremium').value);
+    const qty = Math.max(1, parseInt(document.getElementById('vy-bQty').value, 10) || 1);
+    const fees = parseFloat(document.getElementById('vy-bFees').value) || 0;
+    const currency = document.getElementById('vy-bCurrency').value;
+    const date = document.getElementById('vy-bDate').value || todayISO();
+    if (!ticker) { alert('Vyplň ticker akcie.'); return; }
+    if (!(strike > 0)) { alert('Vyplň strike cenu.'); return; }
+    if (!(days > 0)) { alert('Vyplň počet dní do expirace.'); return; }
+    if (!(premium > 0)) { alert('Vyplň prémium na 1 akcii.'); return; }
+    data.buys.push({
+      id: newId(), date, ticker, type, strike, days, premium, qty, currency, fees,
+      status: 'open',
+    });
+    saveData();
+    toggleBuyForm(false);
     refresh();
   }
 
@@ -4518,6 +4819,75 @@ const VYPIS = (() => {
     });
   }
 
+  /* ── Akce: nákupy / uplatnění ── */
+  function toggleBuy(id) { expanded['b-' + id] = !expanded['b-' + id]; renderBuys(); }
+
+  function startExerciseBuy(id) { exercisingId = id; buyClosingId = null; expanded['b-' + id] = true; renderBuys(); }
+  function cancelExerciseBuy() { exercisingId = null; renderBuys(); }
+  function confirmExerciseBuy(id) {
+    const b = findBuy(id); if (!b) return;
+    if (b.type !== 'put') {
+      data.portfolio.push({
+        id: newId(), ticker: b.ticker, currency: b.currency, qty: b.qty * 100,
+        costBasis: b.strike + b.premium, currentPrice: b.strike + b.premium, openDate: todayISO(),
+        sourceBuyId: b.id, status: 'open',
+      });
+    } else {
+      const sel = document.getElementById('vy-buyExerciseLot');
+      if (!sel) return;
+      const lot = findPos(sel.value);
+      if (!lot) { alert('Vyber pozici k prodeji.'); return; }
+      lot.status = 'closed'; lot.closeDate = todayISO(); lot.closePrice = b.strike; lot.closedByBuyId = b.id;
+    }
+    b.status = 'exercised'; b.exercisedDate = todayISO();
+    exercisingId = null;
+    saveData(); refresh();
+  }
+
+  function startCloseBuy(id) { buyClosingId = id; exercisingId = null; expanded['b-' + id] = true; renderBuys(); }
+  function cancelCloseBuy() { buyClosingId = null; renderBuys(); }
+  function confirmCloseBuy(id) {
+    const b = findBuy(id); if (!b) return;
+    const price = parseFloat(document.getElementById('vy-bClosePrice').value);
+    if (!(price >= 0)) { alert('Vyplň cenu, za kterou byla opce prodána.'); return; }
+    const date = document.getElementById('vy-bCloseDate').value || todayISO();
+    b.status = 'closed'; b.closePrice = price; b.closeDate = date;
+    buyClosingId = null;
+    saveData(); refresh();
+  }
+  // Rychlé potvrzení, že nakoupená opce expirovala bezcenná — celé prémium je ztráta
+  function expireBuy(id) {
+    const b = findBuy(id); if (!b) return;
+    const ed = expDateOf(b);
+    b.status = 'closed'; b.closePrice = 0; b.closeDate = (ed && ed <= todayISO()) ? ed : todayISO(); b.expired = true;
+    buyClosingId = null; exercisingId = null;
+    saveData(); refresh();
+  }
+  function updFeesBuy(id, value) {
+    const b = findBuy(id); if (!b) return;
+    b.fees = parseFloat(value) || 0;
+    saveData(); refresh();
+  }
+  function delBuy(id) {
+    const b = findBuy(id); if (!b) return;
+    const extra = b.status === 'exercised' ? ' Propojená pozice v portfoliu bude také zrušena / znovu otevřena.' : '';
+    showDialog(`Smazat nákup ${b.ticker}?`, `Nákup i zaplacené prémium budou trvale odstraněny ze zůstatku účtu.${extra} Tato akce je nevratná.`, () => {
+      if (b.status === 'exercised') {
+        if (b.type !== 'put') {
+          data.portfolio = data.portfolio.filter(p => p.sourceBuyId !== b.id);
+        } else {
+          const lot = data.portfolio.find(p => p.closedByBuyId === b.id);
+          if (lot) { lot.status = 'open'; delete lot.closeDate; delete lot.closePrice; delete lot.closedByBuyId; }
+        }
+      }
+      data.buys = data.buys.filter(x => x.id !== id);
+      delete expanded['b-' + id];
+      if (exercisingId === id) exercisingId = null;
+      if (buyClosingId === id) buyClosingId = null;
+      saveData(); refresh();
+    });
+  }
+
   /* ── Akce: portfolio ── */
   function togglePos(id) { expanded['p-' + id] = !expanded['p-' + id]; renderPortfolio(); }
   function updPrice(id, value) {
@@ -4538,11 +4908,15 @@ const VYPIS = (() => {
   }
   function delPos(id) {
     const p = findPos(id); if (!p) return;
-    const extra = p.sourceWriteId ? ' Propojený výpis se vrátí do stavu „otevřeno“.' : '';
+    const extra = (p.sourceWriteId || p.sourceBuyId) ? ' Propojený obchod se vrátí do stavu „otevřeno“.' : '';
     showDialog(`Smazat pozici ${p.ticker}?`, `Pozice bude trvale odstraněna z portfolia.${extra} Tato akce je nevratná.`, () => {
       if (p.sourceWriteId) {
         const w = findWrite(p.sourceWriteId);
         if (w) { w.status = 'open'; delete w.assignedDate; }
+      }
+      if (p.sourceBuyId) {
+        const b = findBuy(p.sourceBuyId);
+        if (b) { b.status = 'open'; delete b.exercisedDate; }
       }
       data.portfolio = data.portfolio.filter(x => x.id !== id);
       saveData(); refresh();
@@ -4577,6 +4951,19 @@ const VYPIS = (() => {
     ['vy-wStrike','vy-wDays','vy-wPremium','vy-wQty','vy-wFees'].forEach(id => {
       document.getElementById(id).addEventListener('input', updateWritePreview);
     });
+
+    document.getElementById('vy-btnAddBuy').addEventListener('click', () => {
+      toggleBuyForm(document.getElementById('vy-buyForm').style.display === 'none');
+    });
+    document.getElementById('vy-bSave').addEventListener('click', saveBuy);
+    document.getElementById('vy-bCancel').addEventListener('click', () => toggleBuyForm(false));
+    document.querySelectorAll('#vy-bType button').forEach(b => {
+      b.addEventListener('click', () => { bType = b.dataset.type; syncBType(); });
+    });
+    document.getElementById('vy-bCurrency').addEventListener('change', updateBuyPreview);
+    ['vy-bStrike','vy-bDays','vy-bPremium','vy-bQty','vy-bFees'].forEach(id => {
+      document.getElementById(id).addEventListener('input', updateBuyPreview);
+    });
   }
 
   function init() { initData(); setupEvents(); refresh(); }
@@ -4585,6 +4972,9 @@ const VYPIS = (() => {
     init, refresh, toggle, delMove, delWrite, updFees,
     startAssign, cancelAssign, confirmAssign,
     startClose, cancelClose, confirmClose, expireWrite,
+    toggleBuy, delBuy, updFeesBuy,
+    startExerciseBuy, cancelExerciseBuy, confirmExerciseBuy,
+    startCloseBuy, cancelCloseBuy, confirmCloseBuy, expireBuy,
     togglePos, updPrice, startSell, cancelSell, confirmSell, delPos,
   };
 })();
