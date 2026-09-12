@@ -722,6 +722,10 @@
 
   .opc-empty { padding: 18px 16px; font-size: 13px; color: var(--text-muted); font-style: italic; text-align: center; }
 
+  .opc-collapse-toggle { cursor: pointer; user-select: none; }
+  .opc-collapse-icon { color: var(--text-muted); font-size: 12px; transition: transform 0.15s; }
+  .opc-collapse-toggle.collapsed .opc-collapse-icon { transform: rotate(-90deg); }
+
   #o-yearly { padding: 14px 16px; }
   .opc-yearly-title { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
   .opc-yearly-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
@@ -1419,33 +1423,33 @@
         </div>
       </div>
 
-      <div class="card" style="margin:16px 0 8px">
-        <div class="app-header"><span class="app-title">Aktivní výpisy</span></div>
+      <div class="card opc-collapse-toggle" style="margin:16px 0 8px" data-collapse-target="vy-activeList">
+        <div class="app-header"><span class="app-title">Aktivní výpisy</span><span class="opc-collapse-icon">▾</span></div>
       </div>
       <div id="vy-activeList"></div>
 
-      <div class="card" style="margin:16px 0 8px">
-        <div class="app-header"><span class="app-title">Uzavřené výpisy</span></div>
+      <div class="card opc-collapse-toggle" style="margin:16px 0 8px" data-collapse-target="vy-closedList">
+        <div class="app-header"><span class="app-title">Uzavřené výpisy</span><span class="opc-collapse-icon">▾</span></div>
       </div>
       <div id="vy-closedList"></div>
 
-      <div class="card" style="margin:16px 0 8px">
-        <div class="app-header"><span class="app-title">Aktivní nákupy</span></div>
+      <div class="card opc-collapse-toggle" style="margin:16px 0 8px" data-collapse-target="vy-activeBuyList">
+        <div class="app-header"><span class="app-title">Aktivní nákupy</span><span class="opc-collapse-icon">▾</span></div>
       </div>
       <div id="vy-activeBuyList"></div>
 
-      <div class="card" style="margin:16px 0 8px">
-        <div class="app-header"><span class="app-title">Uzavřené nákupy</span></div>
+      <div class="card opc-collapse-toggle" style="margin:16px 0 8px" data-collapse-target="vy-closedBuyList">
+        <div class="app-header"><span class="app-title">Uzavřené nákupy</span><span class="opc-collapse-icon">▾</span></div>
       </div>
       <div id="vy-closedBuyList"></div>
 
-      <div class="card" style="margin:16px 0 8px">
-        <div class="app-header"><span class="app-title">Portfolio z uplatněných opcí</span></div>
+      <div class="card opc-collapse-toggle" style="margin:16px 0 8px" data-collapse-target="vy-portfolioList">
+        <div class="app-header"><span class="app-title">Portfolio z uplatněných opcí</span><span class="opc-collapse-icon">▾</span></div>
       </div>
       <div id="vy-portfolioList"></div>
 
-      <div class="card" style="margin:16px 0 8px">
-        <div class="app-header"><span class="app-title">Historie vkladů a výběrů</span></div>
+      <div class="card opc-collapse-toggle" style="margin:16px 0 8px" data-collapse-target="vy-cashList">
+        <div class="app-header"><span class="app-title">Historie vkladů a výběrů</span><span class="opc-collapse-icon">▾</span></div>
       </div>
       <div id="vy-cashList"></div>
 
@@ -5163,6 +5167,15 @@ const VYPIS = (() => {
     document.getElementById('vy-bCurrency').addEventListener('change', updateBuyPreview);
     ['vy-bStrike','vy-bDays','vy-bPremium','vy-bQty','vy-bFees'].forEach(id => {
       document.getElementById(id).addEventListener('input', updateBuyPreview);
+    });
+
+    document.querySelectorAll('.opc-collapse-toggle[data-collapse-target]').forEach(header => {
+      header.addEventListener('click', () => {
+        const target = document.getElementById(header.dataset.collapseTarget);
+        if (!target) return;
+        const collapsed = header.classList.toggle('collapsed');
+        target.style.display = collapsed ? 'none' : '';
+      });
     });
   }
 
