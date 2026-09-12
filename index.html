@@ -733,6 +733,12 @@
   .opc-yearly-pct { font-weight: 700; font-size: 14px; }
   .opc-yearly-pct.pos, .opc-yearly-gain.pos { color: var(--green); }
   .opc-yearly-pct.neg, .opc-yearly-gain.neg { color: #e05252; }
+  .opc-yearly-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+  .opc-yearly-header .opc-yearly-title { margin-bottom: 0; }
+  .opc-stats-toggle { display: flex; gap: 3px; background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 2px; flex-shrink: 0; }
+  .opc-stats-toggle button { border: none; background: none; padding: 4px 10px; border-radius: 5px; font-size: 11px; font-weight: 600; color: var(--text-muted); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .opc-stats-toggle button.active { background: #d97706; color: #fff; }
+  .opc-yearly-yearsel { display: block; margin-bottom: 10px; padding: 6px 10px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; font-weight: 600; }
 
   @media (max-width: 600px) {
     .opc-hero-value { font-size: 28px; }
@@ -3928,7 +3934,7 @@ const OPCE = (() => {
 const VYPIS = (() => {
   const STORAGE_KEY = 'opce_vypis_data';
   const CURRENCIES = ['CZK', 'USD', 'EUR'];
-  let data = { rates: { USD: 0, EUR: 0 }, moves: [], writes: [], buys: [], portfolio: [] };
+  let data = { rates: { USD: 0, EUR: 0 }, moves: [], writes: [], buys: [], portfolio: [], statsView: 'year', statsMonthYear: null };
   const expanded = {};
   let cType = 'in';
   let wType = 'put';
@@ -3942,7 +3948,7 @@ const VYPIS = (() => {
   function initData() {
     try {
       const s = localStorage.getItem(STORAGE_KEY);
-      if (s) data = Object.assign({ rates: { USD: 0, EUR: 0 }, moves: [], writes: [], buys: [], portfolio: [] }, JSON.parse(s));
+      if (s) data = Object.assign({ rates: { USD: 0, EUR: 0 }, moves: [], writes: [], buys: [], portfolio: [], statsView: 'year', statsMonthYear: null }, JSON.parse(s));
     } catch(e) {}
     if (!data.rates || typeof data.rates !== 'object') data.rates = {};
     if (!(data.rates.USD > 0)) data.rates.USD = data.rates.USD || 0;
@@ -3951,6 +3957,7 @@ const VYPIS = (() => {
     if (!Array.isArray(data.writes)) data.writes = [];
     if (!Array.isArray(data.buys)) data.buys = [];
     if (!Array.isArray(data.portfolio)) data.portfolio = [];
+    if (data.statsView !== 'month') data.statsView = 'year';
   }
   function saveData() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); showStatus(); } catch(e) {} }
 
@@ -4110,23 +4117,29 @@ const VYPIS = (() => {
     }).join('');
   }
 
-  /* ── Roční statistika ──
-     Za každý rok: přijatá prémia (dle data výpisu) + realizovaný zisk/ztráta
-     z pozic uzavřených v tom roce. U běžného roku se navíc připočte
-     nerealizovaný zisk otevřených pozic k dnešnímu dni (aby souhlasil
-     s celkovým "Ziskem" nahoře) — u minulých let to jinak nejde,
-     protože neznáme cenu akcie k 31. 12. daného roku. */
-  function computeYearlyStats() {
+  /* ── Roční / měsíční statistika ──
+     Za každé období: přijatá prémia (dle data výpisu/nákupu) + realizovaný
+     zisk/ztráta z pozic uzavřených v tom období. U běžného roku/měsíce se
+     navíc připočte nerealizovaný zisk otevřených pozic k dnešnímu dni (aby
+     souhlasil s celkovým "Ziskem" nahoře) — u minulých období to jinak
+     nejde, protože neznáme cenu akcie k jejich konci. */
+  function statsYearsList() {
     const yearOf = d => String(d || '').slice(0, 4);
-    const currentYear = String(new Date().getFullYear());
     const years = new Set();
     data.moves.forEach(m => { if (m.date) years.add(yearOf(m.date)); });
     data.writes.forEach(w => { if (w.date) years.add(yearOf(w.date)); });
     data.buys.forEach(b => { if (b.date) years.add(yearOf(b.date)); });
     data.portfolio.forEach(p => { if (p.status === 'closed' && p.closeDate) years.add(yearOf(p.closeDate)); });
-    if (!years.size) return [];
+    return [...years].sort();
+  }
 
-    return [...years].sort().map(y => {
+  function computeYearlyStats() {
+    const yearOf = d => String(d || '').slice(0, 4);
+    const currentYear = String(new Date().getFullYear());
+    const years = statsYearsList();
+    if (!years.length) return [];
+
+    return years.map(y => {
       const vkladRok = { CZK: 0, USD: 0, EUR: 0 };
       data.moves.forEach(m => { if (yearOf(m.date) === y) vkladRok[m.currency] += (m.type === 'out' ? -m.amount : m.amount); });
 
@@ -4155,7 +4168,47 @@ const VYPIS = (() => {
       const buyCount = data.buys.filter(b => yearOf(b.date) === y).length;
       const closedCount = data.portfolio.filter(p => p.status === 'closed' && yearOf(p.closeDate) === y).length;
 
-      return { year: y, vkladRokCZK, ziskCZK, pct, writeCount, buyCount, closedCount };
+      return { key: y, label: y, vkladCZK: vkladRokCZK, ziskCZK, pct, writeCount, buyCount, closedCount };
+    });
+  }
+
+  // Stejná logika jako computeYearlyStats, jen po měsících vybraného roku (leden–prosinec)
+  function computeMonthlyStats(year) {
+    const monthOf = d => String(d || '').slice(0, 7);
+    const nowMonth = todayISO().slice(0, 7);
+
+    return MESICE_LABELS.map((label, i) => {
+      const mk = `${year}-${String(i + 1).padStart(2, '0')}`;
+
+      const vkladMesic = { CZK: 0, USD: 0, EUR: 0 };
+      data.moves.forEach(m => { if (monthOf(m.date) === mk) vkladMesic[m.currency] += (m.type === 'out' ? -m.amount : m.amount); });
+
+      const vkladKum = { CZK: 0, USD: 0, EUR: 0 };
+      data.moves.forEach(m => { if (monthOf(m.date) <= mk) vkladKum[m.currency] += (m.type === 'out' ? -m.amount : m.amount); });
+
+      const ziskMesic = { CZK: 0, USD: 0, EUR: 0 };
+      data.writes.forEach(w => {
+        if (monthOf(w.date) === mk) ziskMesic[w.currency] += w.premium * 100 * w.qty - (w.fees || 0);
+        if (w.status === 'closed' && w.closeDate && monthOf(w.closeDate) === mk) ziskMesic[w.currency] -= (w.closePrice || 0);
+      });
+      data.buys.forEach(b => {
+        if (monthOf(b.date) === mk) ziskMesic[b.currency] -= costOfBuy(b);
+        if (b.status === 'closed' && b.closeDate && monthOf(b.closeDate) === mk) ziskMesic[b.currency] += (b.closePrice || 0);
+      });
+      data.portfolio.forEach(p => { if (p.status === 'closed' && monthOf(p.closeDate) === mk) ziskMesic[p.currency] += (p.closePrice - p.costBasis) * p.qty; });
+      if (mk === nowMonth) {
+        data.portfolio.forEach(p => { if (p.status === 'open') ziskMesic[p.currency] += (p.currentPrice - p.costBasis) * p.qty; });
+      }
+
+      const vkladMesicCZK = toCZK(vkladMesic);
+      const vkladKumCZK = toCZK(vkladKum);
+      const ziskCZK = toCZK(ziskMesic);
+      const pct = vkladKumCZK > 0 ? (ziskCZK / vkladKumCZK * 100) : null;
+      const writeCount = data.writes.filter(w => monthOf(w.date) === mk).length;
+      const buyCount = data.buys.filter(b => monthOf(b.date) === mk).length;
+      const closedCount = data.portfolio.filter(p => p.status === 'closed' && monthOf(p.closeDate) === mk).length;
+
+      return { key: mk, label, vkladCZK: vkladMesicCZK, ziskCZK, pct, writeCount, buyCount, closedCount };
     });
   }
 
@@ -4163,23 +4216,49 @@ const VYPIS = (() => {
   const nakupWord = n => n === 1 ? 'nákup' : (n >= 2 && n <= 4 ? 'nákupy' : 'nákupů');
   const pozWord = n => n === 1 ? 'uzavřená pozice' : (n >= 2 && n <= 4 ? 'uzavřené pozice' : 'uzavřených pozic');
 
+  function statsRow(s) {
+    const cls = s.ziskCZK > 0 ? 'pos' : s.ziskCZK < 0 ? 'neg' : '';
+    const countLabel = `${s.writeCount} ${vypisWord(s.writeCount)}${s.buyCount ? ` • ${s.buyCount} ${nakupWord(s.buyCount)}` : ''}${s.closedCount ? ` • ${s.closedCount} ${pozWord(s.closedCount)}` : ''}`;
+    return `<div class="opc-yearly-row">
+      <span class="opc-yearly-year">${s.label}${countLabel ? `<span class="opc-yearly-count">${countLabel}</span>` : ''}</span>
+      <span class="opc-yearly-vals">
+        <span class="opc-yearly-gain">vklad ${fmt(s.vkladCZK)}</span>
+        <span class="opc-yearly-gain ${cls}">${fmtSign(s.ziskCZK)}</span>
+        <span class="opc-yearly-pct ${cls}">${s.pct == null ? '—' : fmtPct(s.pct)}</span>
+      </span>
+    </div>`;
+  }
+
+  function setStatsView(view) {
+    data.statsView = view === 'month' ? 'month' : 'year';
+    saveData(); renderYearly();
+  }
+  function setStatsMonthYear(year) {
+    data.statsMonthYear = year;
+    saveData(); renderYearly();
+  }
+
   function renderYearly() {
     const el = document.getElementById('vy-yearly');
-    const years = computeYearlyStats();
+    const years = statsYearsList();
     if (!years.length) { el.style.display = 'none'; return; }
     el.style.display = '';
-    el.innerHTML = '<div class="opc-yearly-title">Roční statistika</div>' + years.map(y => {
-      const cls = y.ziskCZK > 0 ? 'pos' : y.ziskCZK < 0 ? 'neg' : '';
-      const countLabel = `${y.writeCount} ${vypisWord(y.writeCount)}${y.buyCount ? ` • ${y.buyCount} ${nakupWord(y.buyCount)}` : ''}${y.closedCount ? ` • ${y.closedCount} ${pozWord(y.closedCount)}` : ''}`;
-      return `<div class="opc-yearly-row">
-        <span class="opc-yearly-year">${y.year}<span class="opc-yearly-count">${countLabel}</span></span>
-        <span class="opc-yearly-vals">
-          <span class="opc-yearly-gain">vklad ${fmt(y.vkladRokCZK)}</span>
-          <span class="opc-yearly-gain ${cls}">${fmtSign(y.ziskCZK)}</span>
-          <span class="opc-yearly-pct ${cls}">${y.pct == null ? '—' : fmtPct(y.pct)}</span>
-        </span>
+
+    const toggle = `
+      <div class="opc-stats-toggle">
+        <button type="button" class="${data.statsView !== 'month' ? 'active' : ''}" onclick="VYPIS.setStatsView('year')">Ročně</button>
+        <button type="button" class="${data.statsView === 'month' ? 'active' : ''}" onclick="VYPIS.setStatsView('month')">Měsíčně</button>
       </div>`;
-    }).join('');
+
+    if (data.statsView === 'month') {
+      if (!data.statsMonthYear || !years.includes(data.statsMonthYear)) data.statsMonthYear = years[years.length - 1];
+      const yearSelect = `<select class="opc-yearly-yearsel" onchange="VYPIS.setStatsMonthYear(this.value)">${years.map(y => `<option value="${y}"${y === data.statsMonthYear ? ' selected' : ''}>${y}</option>`).join('')}</select>`;
+      const months = computeMonthlyStats(data.statsMonthYear);
+      el.innerHTML = `<div class="opc-yearly-header"><div class="opc-yearly-title">Měsíční statistika</div>${toggle}</div>${yearSelect}` + months.map(statsRow).join('');
+    } else {
+      const rows = computeYearlyStats();
+      el.innerHTML = `<div class="opc-yearly-header"><div class="opc-yearly-title">Roční statistika</div>${toggle}</div>` + rows.map(statsRow).join('');
+    }
   }
 
   /* ── Seznam výpisů ── */
@@ -4976,6 +5055,7 @@ const VYPIS = (() => {
     startExerciseBuy, cancelExerciseBuy, confirmExerciseBuy,
     startCloseBuy, cancelCloseBuy, confirmCloseBuy, expireBuy,
     togglePos, updPrice, startSell, cancelSell, confirmSell, delPos,
+    setStatsView, setStatsMonthYear,
   };
 })();
 
