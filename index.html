@@ -1336,13 +1336,19 @@
 
       <div class="card" id="vy-convertForm" style="display:none">
         <div class="opc-fields">
+          <div class="opc-field"><label>Směr</label>
+            <div class="opc-seg" id="vy-vDirType">
+              <button type="button" class="out active" data-dir="toCzk">Měna → CZK</button>
+              <button type="button" class="in" data-dir="fromCzk">CZK → měna</button>
+            </div>
+          </div>
           <div class="opc-field"><label>Měna k převodu</label>
             <select id="vy-vCurrency">
               <option value="USD">USD</option>
               <option value="EUR">EUR</option>
             </select>
           </div>
-          <div class="opc-field"><label>Částka (v dané měně)</label><input type="number" id="vy-vAmount" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+          <div class="opc-field"><label id="vy-vAmountLabel">Částka (v dané měně)</label><input type="number" id="vy-vAmount" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
           <div class="opc-field"><label>Kurz → Kč</label><input type="number" id="vy-vRate" inputmode="decimal" step="0.001" min="0" placeholder="0"></div>
           <div class="opc-field"><label>Datum</label><input type="date" id="vy-vDate"></div>
         </div>
@@ -3959,6 +3965,7 @@ const VYPIS = (() => {
   let cType = 'in';
   let wType = 'put';
   let bType = 'call';
+  let vDir = 'toCzk';
   let assigningId = null;
   let sellingId = null;
   let closingId = null;
@@ -4744,6 +4751,12 @@ const VYPIS = (() => {
      Interní přesun mezi měnami uvnitř účtu (typicky když IBKR strhne
      jinou měnu, aby dorovnal nedostatek USD) — nejde o nový vklad, proto
      se nezapočítává do "vkladu" v roční/měsíční statistice. */
+  function syncVDir() {
+    document.querySelectorAll('#vy-vDirType button').forEach(b => b.classList.toggle('active', b.dataset.dir === vDir));
+    document.getElementById('vy-vAmountLabel').textContent = vDir === 'toCzk'
+      ? 'Částka k převodu (v dané měně)'
+      : 'Částka k doplnění (v dané měně)';
+  }
   function updateConvertPreview() {
     const amount = parseFloat(document.getElementById('vy-vAmount').value) || 0;
     const rate = parseFloat(document.getElementById('vy-vRate').value) || 0;
@@ -4757,6 +4770,7 @@ const VYPIS = (() => {
     toggleCashForm(false);
     toggleWriteForm(false);
     toggleBuyForm(false);
+    vDir = 'toCzk'; syncVDir();
     const currency = document.getElementById('vy-vCurrency').value || 'USD';
     document.getElementById('vy-vAmount').value = '';
     document.getElementById('vy-vRate').value = data.rates[currency] || '';
@@ -4773,9 +4787,15 @@ const VYPIS = (() => {
     if (!(rate > 0)) { alert('Vyplň kurz.'); return; }
     const czkAmount = amount * rate;
     const conversionId = newId();
-    const note = `Převod ${currency} → CZK`;
-    data.moves.push({ id: newId(), date, type: 'out', amount, currency, note, conversionId });
-    data.moves.push({ id: newId(), date, type: 'in', amount: czkAmount, currency: 'CZK', note, conversionId });
+    if (vDir === 'toCzk') {
+      const note = `Převod ${currency} → CZK`;
+      data.moves.push({ id: newId(), date, type: 'out', amount, currency, note, conversionId });
+      data.moves.push({ id: newId(), date, type: 'in', amount: czkAmount, currency: 'CZK', note, conversionId });
+    } else {
+      const note = `Převod CZK → ${currency}`;
+      data.moves.push({ id: newId(), date, type: 'out', amount: czkAmount, currency: 'CZK', note, conversionId });
+      data.moves.push({ id: newId(), date, type: 'in', amount, currency, note, conversionId });
+    }
     saveData();
     toggleConvertForm(false);
     refresh();
@@ -5112,6 +5132,9 @@ const VYPIS = (() => {
     });
     document.getElementById('vy-vSave').addEventListener('click', saveConvert);
     document.getElementById('vy-vCancel').addEventListener('click', () => toggleConvertForm(false));
+    document.querySelectorAll('#vy-vDirType button').forEach(b => {
+      b.addEventListener('click', () => { vDir = b.dataset.dir; syncVDir(); });
+    });
     document.getElementById('vy-vCurrency').addEventListener('change', () => {
       document.getElementById('vy-vRate').value = data.rates[document.getElementById('vy-vCurrency').value] || '';
       updateConvertPreview();
