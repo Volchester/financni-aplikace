@@ -1302,6 +1302,7 @@
         <div class="app-header">
           <span class="app-title">Účet a obchody</span>
           <button class="btn" id="vy-btnAddCash">+ Přidat peníze</button>
+          <button class="btn" id="vy-btnAddConvert">Převést na CZK</button>
           <button class="btn btn-primary" id="vy-btnAddWrite">+ Přidat výpis</button>
           <button class="btn btn-primary" id="vy-btnAddBuy">+ Přidat nákup</button>
         </div>
@@ -1330,6 +1331,25 @@
         <div class="opc-actions">
           <button class="btn btn-primary" id="vy-cSave">Uložit</button>
           <button class="btn" id="vy-cCancel">Zrušit</button>
+        </div>
+      </div>
+
+      <div class="card" id="vy-convertForm" style="display:none">
+        <div class="opc-fields">
+          <div class="opc-field"><label>Měna k převodu</label>
+            <select id="vy-vCurrency">
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+            </select>
+          </div>
+          <div class="opc-field"><label>Částka (v dané měně)</label><input type="number" id="vy-vAmount" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+          <div class="opc-field"><label>Kurz → Kč</label><input type="number" id="vy-vRate" inputmode="decimal" step="0.001" min="0" placeholder="0"></div>
+          <div class="opc-field"><label>Datum</label><input type="date" id="vy-vDate"></div>
+        </div>
+        <div class="opc-meta" id="vy-vPreview"></div>
+        <div class="opc-actions">
+          <button class="btn btn-primary" id="vy-vSave">Uložit převod</button>
+          <button class="btn" id="vy-vCancel">Zrušit</button>
         </div>
       </div>
 
@@ -4083,9 +4103,11 @@ const VYPIS = (() => {
     return v;
   }
   function toCZK(byCur) { return byCur.CZK + byCur.USD * rateOf('USD') + byCur.EUR * rateOf('EUR'); }
+  // Vklady/výběry bez interních převodů měn (ty nejsou nové peníze zvenčí,
+  // jen přesun mezi měnami uvnitř účtu — do "vkladu" se nepočítají).
   function depositedCZK() {
     const bal = { CZK: 0, USD: 0, EUR: 0 };
-    data.moves.forEach(m => { bal[m.currency] += (m.type === 'out' ? -m.amount : m.amount); });
+    data.moves.forEach(m => { if (!m.conversionId) bal[m.currency] += (m.type === 'out' ? -m.amount : m.amount); });
     return toCZK(bal);
   }
   function totalValueCZK() {
@@ -4144,7 +4166,7 @@ const VYPIS = (() => {
     let ziskKumPrevCZK = 0;
     return periods.map(pk => {
       const vklad = { CZK: 0, USD: 0, EUR: 0 };
-      data.moves.forEach(m => { if (periodOf(m.date) === pk) vklad[m.currency] += (m.type === 'out' ? -m.amount : m.amount); });
+      data.moves.forEach(m => { if (!m.conversionId && periodOf(m.date) === pk) vklad[m.currency] += (m.type === 'out' ? -m.amount : m.amount); });
 
       const zisk = { CZK: 0, USD: 0, EUR: 0 };
       data.writes.forEach(w => {
@@ -4626,21 +4648,36 @@ const VYPIS = (() => {
     wrap.innerHTML = openHtml + closedHtml;
   }
 
-  /* ── Historie vkladů / výběrů ── */
+  /* ── Historie vkladů / výběrů / převodů měn ── */
   function renderMoves() {
     const wrap = document.getElementById('vy-cashList');
-    const list = data.moves.slice().sort((a, b) => String(b.date||'').localeCompare(String(a.date||'')));
-    if (!list.length) {
+    const seenConversions = new Set();
+    const rows = [];
+    data.moves.forEach(m => {
+      if (m.conversionId) {
+        if (seenConversions.has(m.conversionId)) return;
+        seenConversions.add(m.conversionId);
+        const pair = data.moves.filter(x => x.conversionId === m.conversionId);
+        const fromLeg = pair.find(x => x.type === 'out') || pair[0];
+        const toLeg = pair.find(x => x !== fromLeg) || pair[0];
+        rows.push({ date: m.date, html: `<div class="opc-row">
+          <span class="opc-row-label">${fmtD(m.date)} • Převod měny${m.note ? ' — ' + esc(m.note) : ''}</span>
+          <span class="opc-row-value">−${fmtCur(fromLeg.amount, fromLeg.currency)} → +${fmtCur(toLeg.amount, toLeg.currency)} <button class="btn btn-danger" style="padding:3px 9px;font-size:11px" onclick="VYPIS.delMove('${m.id}')">Smazat</button></span>
+        </div>` });
+      } else {
+        const isOut = m.type === 'out';
+        rows.push({ date: m.date, html: `<div class="opc-row">
+          <span class="opc-row-label">${fmtD(m.date)} • ${isOut ? 'Výběr' : 'Vklad'}${m.note ? ' — ' + esc(m.note) : ''}</span>
+          <span class="opc-row-value ${isOut ? 'neg' : 'pos'}">${isOut ? '−' : '+'}${fmtCur(m.amount, m.currency)} <button class="btn btn-danger" style="padding:3px 9px;font-size:11px" onclick="VYPIS.delMove('${m.id}')">Smazat</button></span>
+        </div>` });
+      }
+    });
+    if (!rows.length) {
       wrap.innerHTML = '<div class="card"><div class="opc-empty">Zatím žádné vklady ani výběry.</div></div>';
       return;
     }
-    wrap.innerHTML = '<div class="card"><div class="opc-rows" style="padding-top:4px">' + list.map(m => {
-      const isOut = m.type === 'out';
-      return `<div class="opc-row">
-        <span class="opc-row-label">${fmtD(m.date)} • ${isOut ? 'Výběr' : 'Vklad'}${m.note ? ' — ' + esc(m.note) : ''}</span>
-        <span class="opc-row-value ${isOut ? 'neg' : 'pos'}">${isOut ? '−' : '+'}${fmtCur(m.amount, m.currency)} <button class="btn btn-danger" style="padding:3px 9px;font-size:11px" onclick="VYPIS.delMove('${m.id}')">Smazat</button></span>
-      </div>`;
-    }).join('') + '</div></div>';
+    rows.sort((a, b) => String(b.date||'').localeCompare(String(a.date||'')));
+    wrap.innerHTML = '<div class="card"><div class="opc-rows" style="padding-top:4px">' + rows.map(r => r.html).join('') + '</div></div>';
   }
 
   function refresh() { renderHero(); renderWrites(); renderBuys(); renderPortfolio(); renderMoves(); renderYearly(); }
@@ -4674,6 +4711,7 @@ const VYPIS = (() => {
     if (!show) return;
     toggleWriteForm(false);
     toggleBuyForm(false);
+    toggleConvertForm(false);
     cType = 'in'; syncCType();
     document.getElementById('vy-cDate').value = todayISO();
     document.getElementById('vy-cAmount').value = '';
@@ -4692,6 +4730,47 @@ const VYPIS = (() => {
     data.moves.push({ id: newId(), date, type, amount, currency, note });
     saveData();
     toggleCashForm(false);
+    refresh();
+  }
+
+  /* ── Formulář: převod měny na CZK ──
+     Interní přesun mezi měnami uvnitř účtu (typicky když IBKR strhne
+     jinou měnu, aby dorovnal nedostatek USD) — nejde o nový vklad, proto
+     se nezapočítává do "vkladu" v roční/měsíční statistice. */
+  function updateConvertPreview() {
+    const amount = parseFloat(document.getElementById('vy-vAmount').value) || 0;
+    const rate = parseFloat(document.getElementById('vy-vRate').value) || 0;
+    const el = document.getElementById('vy-vPreview');
+    if (!(amount > 0)) { el.textContent = ''; return; }
+    el.textContent = rate > 0 ? `= ${fmt(amount * rate)}` : 'Vyplň kurz pro přepočet na Kč.';
+  }
+  function toggleConvertForm(show) {
+    document.getElementById('vy-convertForm').style.display = show ? '' : 'none';
+    if (!show) return;
+    toggleCashForm(false);
+    toggleWriteForm(false);
+    toggleBuyForm(false);
+    const currency = document.getElementById('vy-vCurrency').value || 'USD';
+    document.getElementById('vy-vAmount').value = '';
+    document.getElementById('vy-vRate').value = data.rates[currency] || '';
+    document.getElementById('vy-vDate').value = todayISO();
+    updateConvertPreview();
+    document.getElementById('vy-vAmount').focus();
+  }
+  function saveConvert() {
+    const currency = document.getElementById('vy-vCurrency').value;
+    const amount = parseFloat(document.getElementById('vy-vAmount').value);
+    const rate = parseFloat(document.getElementById('vy-vRate').value);
+    const date = document.getElementById('vy-vDate').value || todayISO();
+    if (!(amount > 0)) { alert('Vyplň částku k převodu.'); return; }
+    if (!(rate > 0)) { alert('Vyplň kurz.'); return; }
+    const czkAmount = amount * rate;
+    const conversionId = newId();
+    const note = `Převod ${currency} → CZK`;
+    data.moves.push({ id: newId(), date, type: 'out', amount, currency, note, conversionId });
+    data.moves.push({ id: newId(), date, type: 'in', amount: czkAmount, currency: 'CZK', note, conversionId });
+    saveData();
+    toggleConvertForm(false);
     refresh();
   }
 
@@ -4721,6 +4800,7 @@ const VYPIS = (() => {
     if (!show) return;
     toggleCashForm(false);
     toggleBuyForm(false);
+    toggleConvertForm(false);
     wType = 'put'; syncWType();
     document.getElementById('vy-wTicker').value = '';
     document.getElementById('vy-wStrike').value = '';
@@ -4778,6 +4858,7 @@ const VYPIS = (() => {
     if (!show) return;
     toggleCashForm(false);
     toggleWriteForm(false);
+    toggleConvertForm(false);
     bType = 'call'; syncBType();
     document.getElementById('vy-bTicker').value = '';
     document.getElementById('vy-bStrike').value = '';
@@ -4860,8 +4941,14 @@ const VYPIS = (() => {
 
   function delMove(id) {
     const m = data.moves.find(x => x.id === id); if (!m) return;
-    showDialog('Smazat záznam?', 'Pohyb bude trvale odstraněn ze zůstatku účtu. Tato akce je nevratná.', () => {
-      data.moves = data.moves.filter(x => x.id !== id);
+    const isConversion = !!m.conversionId;
+    const msg = isConversion
+      ? 'Převod měny (obě strany) bude trvale odstraněn ze zůstatku účtu. Tato akce je nevratná.'
+      : 'Pohyb bude trvale odstraněn ze zůstatku účtu. Tato akce je nevratná.';
+    showDialog('Smazat záznam?', msg, () => {
+      data.moves = isConversion
+        ? data.moves.filter(x => x.conversionId !== m.conversionId)
+        : data.moves.filter(x => x.id !== id);
       saveData(); refresh();
     });
   }
@@ -5012,6 +5099,18 @@ const VYPIS = (() => {
     });
     document.getElementById('vy-cCurrency').addEventListener('change', updateCashPreview);
     document.getElementById('vy-cAmount').addEventListener('input', updateCashPreview);
+
+    document.getElementById('vy-btnAddConvert').addEventListener('click', () => {
+      toggleConvertForm(document.getElementById('vy-convertForm').style.display === 'none');
+    });
+    document.getElementById('vy-vSave').addEventListener('click', saveConvert);
+    document.getElementById('vy-vCancel').addEventListener('click', () => toggleConvertForm(false));
+    document.getElementById('vy-vCurrency').addEventListener('change', () => {
+      document.getElementById('vy-vRate').value = data.rates[document.getElementById('vy-vCurrency').value] || '';
+      updateConvertPreview();
+    });
+    document.getElementById('vy-vAmount').addEventListener('input', updateConvertPreview);
+    document.getElementById('vy-vRate').addEventListener('input', updateConvertPreview);
 
     document.getElementById('vy-wSave').addEventListener('click', saveWrite);
     document.getElementById('vy-wCancel').addEventListener('click', () => toggleWriteForm(false));
