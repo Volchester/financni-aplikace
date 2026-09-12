@@ -4274,7 +4274,7 @@ const VYPIS = (() => {
       const badge = pending
         ? `<span class="opc-dleft hot">čeká na vypořádání</span>`
         : (assigned || closed)
-        ? `<span class="opc-profit ${cls}">${ap == null ? '—' : fmtPct(ap) + ' p.a.'}${tp == null ? '' : ` <small>(${fmtPct(tp)})</small>`}</span>`
+        ? `<span class="opc-profit ${cls}">${tp == null ? '—' : fmtPct(tp)}${ap == null ? '' : ` <small>(${fmtPct(ap)} p.a.)</small>`}</span>`
         : `<span class="opc-dleft ${dleftClass(dl)}">zbývá ${dl} ${dniWord(dl)}</span>`;
 
       return `
@@ -4427,7 +4427,7 @@ const VYPIS = (() => {
         : exercised
         ? `<span class="opc-dleft ok">uplatněno</span>`
         : closed
-        ? `<span class="opc-profit ${cls}">${ap == null ? '—' : fmtPct(ap) + ' p.a.'}${tp == null ? '' : ` <small>(${fmtPct(tp)})</small>`}</span>`
+        ? `<span class="opc-profit ${cls}">${tp == null ? '—' : fmtPct(tp)}${ap == null ? '' : ` <small>(${fmtPct(ap)} p.a.)</small>`}</span>`
         : `<span class="opc-dleft ${dleftClass(dl)}">zbývá ${dl} ${dniWord(dl)}</span>`;
 
       return `
