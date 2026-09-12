@@ -4061,13 +4061,15 @@ const VYPIS = (() => {
         bal[w.currency] -= (w.closePrice || 0);
       }
     });
+    // Nákup opce sám o sobě zůstatek nemění — zaplacené prémium je "vázané"
+    // v otevřené pozici. Účet se přepočítá až při vypořádání (prodej,
+    // expirace, nebo uplatnění), kdy se realizuje skutečný zisk/ztráta.
     data.buys.forEach(b => {
-      bal[b.currency] -= costOfBuy(b);
       if (b.status === 'exercised') {
-        if (b.type === 'call') bal[b.currency] -= b.strike * 100 * b.qty;
-        else bal[b.currency] += b.strike * 100 * b.qty;
+        if (b.type === 'call') bal[b.currency] -= b.strike * 100 * b.qty + costOfBuy(b);
+        else bal[b.currency] += b.strike * 100 * b.qty - costOfBuy(b);
       } else if (b.status === 'closed') {
-        bal[b.currency] += (b.closePrice || 0);
+        bal[b.currency] += (b.closePrice || 0) - costOfBuy(b);
       }
     });
     data.portfolio.forEach(p => {
@@ -4149,9 +4151,12 @@ const VYPIS = (() => {
         if (periodOf(w.date) === pk) zisk[w.currency] += w.premium * 100 * w.qty - (w.fees || 0);
         if (w.status === 'closed' && w.closeDate && periodOf(w.closeDate) === pk) zisk[w.currency] -= (w.closePrice || 0);
       });
+      // Nákup opce se do zisku/ztráty promítne až při vypořádání (prodej
+      // nebo expirace) — do té doby je prémium jen vázané, ne ztracené.
+      // U uplatnění se náklad přenáší do cost basis pozice v portfoliu
+      // (viz VYPIS.confirmExerciseBuy), takže se projeví tam.
       data.buys.forEach(b => {
-        if (periodOf(b.date) === pk) zisk[b.currency] -= costOfBuy(b);
-        if (b.status === 'closed' && b.closeDate && periodOf(b.closeDate) === pk) zisk[b.currency] += (b.closePrice || 0);
+        if (b.status === 'closed' && b.closeDate && periodOf(b.closeDate) === pk) zisk[b.currency] += (b.closePrice || 0) - costOfBuy(b);
       });
       data.portfolio.forEach(p => { if (p.status === 'closed' && periodOf(p.closeDate) === pk) zisk[p.currency] += (p.closePrice - p.costBasis) * p.qty; });
       if (isCurrentPeriod(pk)) {
@@ -4422,7 +4427,7 @@ const VYPIS = (() => {
               <div class="opc-field"><label>Prodejní cena (celkem, ${b.currency})</label><input type="number" id="vy-bClosePrice" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
               <div class="opc-field"><label>Datum</label><input type="date" id="vy-bCloseDate" value="${todayISO()}"></div>
             </div>
-            <div class="opc-meta">Cena se připíše k zůstatku účtu a přepočítá zhodnocení obchodu za skutečnou dobu držení.</div>
+            <div class="opc-meta">Rozdíl mezi prodejní cenou a zaplaceným prémiem se promítne do zůstatku účtu (dosud se prémium do zůstatku nepočítalo).</div>
             <div class="opc-actions">
               <button class="btn btn-primary" onclick="VYPIS.confirmCloseBuy('${b.id}')">Potvrdit prodej</button>
               <button class="btn" onclick="VYPIS.cancelCloseBuy()">Zpět</button>
@@ -4433,7 +4438,7 @@ const VYPIS = (() => {
           actionBlock = `
           <div class="opc-close-form">
             <div class="opc-close-title">Potvrdit uplatnění opce</div>
-            <div class="opc-meta">Do portfolia přibude ${b.qty * 100} ks ${esc(b.ticker)} s náklady ${fmtCur(b.strike + b.premium, b.currency)} / ks (strike + zaplacené prémium).</div>
+            <div class="opc-meta">Do portfolia přibude ${b.qty * 100} ks ${esc(b.ticker)} s náklady ${fmtCur(b.strike + b.premium, b.currency)} / ks (strike + zaplacené prémium). Z hotovosti se odečte strike i dosud nezúčtované prémium.</div>
             <div class="opc-actions">
               <button class="btn btn-primary" onclick="VYPIS.confirmExerciseBuy('${b.id}')">Potvrdit uplatnění</button>
               <button class="btn" onclick="VYPIS.cancelExerciseBuy()">Zpět</button>
@@ -4456,7 +4461,7 @@ const VYPIS = (() => {
                 </select>
               </div>
             </div>
-            <div class="opc-meta">Akcie se prodají za ${fmtCur(b.strike, b.currency)} / ks, hotovost se zvýší.</div>
+            <div class="opc-meta">Akcie se prodají za ${fmtCur(b.strike, b.currency)} / ks, hotovost se zvýší (po odečtení dosud nezúčtovaného prémia).</div>
             <div class="opc-actions">
               <button class="btn btn-primary" onclick="VYPIS.confirmExerciseBuy('${b.id}')">Potvrdit uplatnění</button>
               <button class="btn" onclick="VYPIS.cancelExerciseBuy()">Zpět</button>
@@ -4473,7 +4478,7 @@ const VYPIS = (() => {
           <div class="opc-actions"><button class="btn btn-danger" onclick="VYPIS.delBuy('${b.id}')">Smazat</button></div>`;
       } else {
         actionBlock = `
-          ${pending ? '<div class="opc-meta">Expirace proběhla, ale nákup ještě nemáš vypořádaný — rozhodni, jestli byla opce uplatněna, nebo ji uzavři/expiruj s nulovou hodnotou.</div>' : ''}
+          ${pending ? '<div class="opc-meta">Expirace proběhla, ale nákup ještě nemáš vypořádaný — rozhodni, jestli byla opce uplatněna, nebo ji uzavři/expiruj s nulovou hodnotou.</div>' : '<div class="opc-meta">Zaplacené prémium zatím nesnižuje zůstatek účtu — projeví se až při vypořádání (prodej, expirace, nebo uplatnění).</div>'}
           <div class="opc-actions">
             <button class="btn btn-primary" onclick="VYPIS.startExerciseBuy('${b.id}')">Uplatnit opci</button>
             <button class="btn" onclick="VYPIS.startCloseBuy('${b.id}')">Prodej opce</button>
