@@ -4133,12 +4133,19 @@ const VYPIS = (() => {
     pctEl.textContent = pctVal == null ? '—' : fmtPct(pctVal);
     pctEl.className = 'opc-stat-value' + (pctVal > 0 ? ' pos' : pctVal < 0 ? ' neg' : '');
 
-    document.getElementById('vy-currencyBreakdown').innerHTML = CURRENCIES.map(cur => {
-      const cashV = cash[cur] || 0, portV = port[cur] || 0, total = cashV + portV;
-      const detail = portV ? ` (hotovost ${fmtCur(cashV, cur)} + akcie ${fmtCur(portV, cur)})` : '';
-      const czkEq = cur === 'CZK' ? null : total * rateOf(cur);
-      return `<div class="opc-row"><span class="opc-row-label">${cur}${detail}</span><span class="opc-row-value">${fmtCur(total, cur)}${czkEq != null ? ` <small style="opacity:.7">(${fmt(czkEq)})</small>` : ''}</span></div>`;
+    const cashRows = CURRENCIES.map(cur => {
+      const cashV = cash[cur] || 0;
+      const czkEq = cur === 'CZK' ? null : cashV * rateOf(cur);
+      return `<div class="opc-row"><span class="opc-row-label">${cur}</span><span class="opc-row-value">${fmtCur(cashV, cur)}${czkEq != null ? ` <small style="opacity:.7">(${fmt(czkEq)})</small>` : ''}</span></div>`;
     }).join('');
+    const hasShares = CURRENCIES.some(cur => port[cur] > 0);
+    const sharesRows = hasShares ? `<div class="opc-row" style="border-bottom:none;padding-top:12px;padding-bottom:0"><span class="opc-row-label" style="font-weight:600;color:var(--text)">Držené akcie</span></div>` +
+      CURRENCIES.filter(cur => port[cur] > 0).map(cur => {
+        const portV = port[cur] || 0;
+        const czkEq = cur === 'CZK' ? null : portV * rateOf(cur);
+        return `<div class="opc-row"><span class="opc-row-label">${cur}</span><span class="opc-row-value">${fmtCur(portV, cur)}${czkEq != null ? ` <small style="opacity:.7">(${fmt(czkEq)})</small>` : ''}</span></div>`;
+      }).join('') : '';
+    document.getElementById('vy-currencyBreakdown').innerHTML = cashRows + sharesRows;
   }
 
   /* ── Roční / měsíční statistika ──
